@@ -25,7 +25,20 @@ func init() {
 }
 
 func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
-	err = CreateTables(ctx, db, conf)
+
+	err = addChartConfigTable(ctx, db, conf)
+	if err != nil {
+		blog.Errorf("[upgrade y3_6_201911261109] addChartConfigTable error  %s", err.Error())
+		return err
+	}
+
+	err = addChartPositionTable(ctx, db, conf)
+	if err != nil {
+		blog.Errorf("[upgrade y3_6_201911261109] addChartPositionTable error  %s", err.Error())
+		return err
+	}
+
+	err = addChartDataTable(ctx, db, conf)
 	if err != nil {
 		blog.Errorf("[upgrade y3_6_201911261109] addChartDataTable error  %s", err.Error())
 		return err

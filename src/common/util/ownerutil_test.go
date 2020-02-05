@@ -21,7 +21,7 @@ import (
 
 func TestSetQueryOwner(t *testing.T) {
 	type args struct {
-		condition map[string]interface{}
+		condition interface{}
 		ownerID   string
 	}
 	tests := []struct {
@@ -43,14 +43,14 @@ func TestSetQueryOwner(t *testing.T) {
 		},
 		{
 			"",
-			args{map[string]interface{}{"name": "haha"}, common.BKSuperOwnerID},
+			args{struct{ Name string }{Name: "haha"}, common.BKSuperOwnerID},
 			map[string]interface{}{
 				"name": "haha",
 			},
 		},
 		{
 			"",
-			args{map[string]interface{}{"name": "haha"}, "ownerid"},
+			args{struct{ Name string }{Name: "haha"}, "ownerid"},
 			map[string]interface{}{
 				"name":                "haha",
 				common.BKOwnerIDField: map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, "ownerid"}},

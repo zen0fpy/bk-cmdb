@@ -4,7 +4,6 @@
             <transition name="dialog-fade">
                 <div class="dialog-body" ref="body"
                     v-if="showBody"
-                    :class="{ 'is-scrollable': bodyScroll }"
                     :style="bodyStyle">
                     <div class="dialog-header" v-if="showHeader" ref="header">
                         <slot name="header"></slot>
@@ -45,11 +44,7 @@
                 default: 720
             },
             height: Number,
-            minHeight: Number,
-            bodyScroll: {
-                type: Boolean,
-                default: true
-            }
+            minHeight: Number
         },
         data () {
             return {
@@ -136,10 +131,7 @@
             border-radius: 2px;
             background-color: #fff;
             box-shadow:0px 4px 12px 0px rgba(0,0,0,0.2);
-            overflow: hidden;
-            &.is-scrollable {
-                @include scrollbar;
-            }
+            @include scrollbar;
             .icon-close {
                 position: absolute;
                 top: 6px;

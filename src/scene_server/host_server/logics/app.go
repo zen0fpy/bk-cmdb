@@ -67,7 +67,8 @@ func (lgc *Logics) GetAppDetails(ctx context.Context, fields string, condition m
 
 	input := &metadata.QueryCondition{
 		Condition: condition,
-		Page:      metadata.BasePage{Start: 0, Limit: 1, Sort: common.BKAppIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: 1},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKAppIDField).ToSearchSortArr(),
 		Fields:    strings.Split(fields, ","),
 	}
 	result, err := lgc.CoreAPI.CoreService().Instance().ReadInstance(ctx, lgc.header, common.BKInnerObjIDApp, input)
@@ -151,7 +152,8 @@ func (lgc *Logics) GetSingleApp(ctx context.Context, cond mapstr.MapStr) (mapstr
 	cond.Set(common.BKDataStatusField, mapstr.MapStr{common.BKDBNE: common.DataStatusDisabled})
 	query := &metadata.QueryCondition{
 		Condition: cond,
-		Page:      metadata.BasePage{Start: 0, Limit: 1, Sort: common.BKAppIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: 1},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKAppIDField).ToSearchSortArr(),
 	}
 	result, err := lgc.CoreAPI.CoreService().Instance().ReadInstance(ctx, lgc.header, common.BKInnerObjIDApp, query)
 
@@ -180,7 +182,8 @@ func (lgc *Logics) GetAppIDByCond(ctx context.Context, cond []metadata.Condition
 
 	query := &metadata.QueryCondition{
 		Condition: condMap,
-		Page:      metadata.BasePage{Start: 0, Limit: common.BKNoLimit, Sort: common.BKAppIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: common.BKNoLimit},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKAppIDField).ToSearchSortArr(),
 		Fields:    []string{common.BKAppIDField},
 	}
 	result, err := lgc.CoreAPI.CoreService().Instance().ReadInstance(ctx, lgc.header, common.BKInnerObjIDApp, query)
@@ -214,7 +217,8 @@ func (lgc *Logics) GetAppMapByCond(ctx context.Context, fields []string, cond ma
 	cond.Set(common.BKDataStatusField, mapstr.MapStr{common.BKDBNE: common.DataStatusDisabled})
 	query := &metadata.QueryCondition{
 		Condition: cond,
-		Page:      metadata.BasePage{Start: 0, Limit: common.BKNoLimit, Sort: common.BKAppIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: common.BKNoLimit},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKAppIDField).ToSearchSortArr(),
 		Fields:    fields,
 	}
 

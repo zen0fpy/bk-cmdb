@@ -1,7 +1,7 @@
 <template>
     <div class="failed-list">
         <div class="caption">
-            <div class="title">{{$t('请确认以下主机应用信息')}}</div>
+            <div class="title">请确认以下主机应用信息：</div>
         </div>
         <bk-table
             :data="table.list"
@@ -29,18 +29,9 @@
         </bk-table>
         <div class="bottom-actionbar">
             <div class="actionbar-inner">
-                <cmdb-auth :auth="$authResources({ type: $OPERATION.U_HOST_APPLY })">
-                    <bk-button
-                        theme="primary"
-                        slot-scope="{ disabled }"
-                        :disabled="disabled"
-                        @click="handleRetry"
-                    >
-                        {{$t('重试')}}
-                    </bk-button>
-                </cmdb-auth>
-                <bk-button theme="default" @click="handleCopyIp">{{$t('复制IP')}}</bk-button>
-                <bk-button theme="default" @click="handleCancel">{{$t('取消')}}</bk-button>
+                <bk-button theme="primary" @click="handleRetry">重试</bk-button>
+                <bk-button theme="default" @click="handleCopyIp">复制IP</bk-button>
+                <bk-button theme="default" @click="handleCancel">取消</bk-button>
             </div>
         </div>
         <apply-status-modal
@@ -73,11 +64,7 @@
 <script>
     import { mapGetters, mapState, mapActions } from 'vuex'
     import applyStatusModal from './children/apply-status'
-    import {
-        MENU_BUSINESS_HOST_AND_SERVICE,
-        MENU_BUSINESS_HOST_APPLY,
-        MENU_BUSINESS_HOST_APPLY_FAILED
-    } from '@/dictionary/menu-symbol'
+    import { MENU_BUSINESS_HOST_AND_SERVICE, MENU_BUSINESS_HOST_APPLY } from '@/dictionary/menu-symbol'
     export default {
         components: {
             applyStatusModal
@@ -104,7 +91,7 @@
                     width: 514,
                     isShow: false,
                     content: '',
-                    title: ''
+                    title: this.$t('拓扑显示设置')
                 }
             }
         },
@@ -114,28 +101,13 @@
             ...mapState('hosts', ['propertyList']),
             hostIds () {
                 return this.propertyConfig.bk_host_ids || []
-            },
-            isBatch () {
-                return this.$route.query.batch === 1
-            },
-            moduleId () {
-                const mid = this.$route.query.mid
-                let moduleId
-                if (mid) {
-                    moduleId = Number(mid)
-                }
-                return moduleId
             }
         },
+        watch: {
+        },
         created () {
-            if (!Object.keys(this.propertyConfig).length) {
-                this.$router.push({
-                    name: MENU_BUSINESS_HOST_APPLY
-                })
-            } else {
-                this.setBreadcrumbs()
-                this.getData()
-            }
+            this.setBreadcrumbs()
+            this.getData()
         },
         methods: {
             ...mapGetters('objectModelClassify', [
@@ -149,6 +121,14 @@
             },
             setBreadcrumbs () {
                 this.$store.commit('setTitle', this.$t('失败列表'))
+                this.$store.commit('setBreadcrumbs', [{
+                    label: this.$t('主机属性自动应用'),
+                    route: {
+                        name: MENU_BUSINESS_HOST_APPLY
+                    }
+                }, {
+                    label: this.$t('失败列表')
+                }])
             },
             async getHostList () {
                 try {
@@ -245,13 +225,13 @@
                 this.handleShowDetails(row)
             },
             async handleShowDetails (row) {
-                this.slider.title = `${this.$t('属性详情')}【${row.bk_host_innerip}】`
+                this.slider.title = `属性详情【${row.bk_host_innerip}】`
                 this.slider.content = 'detail'
                 const properties = this.propertyList
                 const inst = row
                 try {
                     const propertyGroups = await this.getPropertyGroups()
-                    this.details.inst = inst
+                    this.details.inst = this.$tools.flattenItem(properties, inst)
                     this.details.properties = properties
                     this.details.propertyGroups = propertyGroups
                     this.slider.isShow = true
@@ -273,19 +253,13 @@
                 this.goBack()
             },
             handleViewHost () {
-                const query = {}
-                if (!this.isBatch && this.moduleId) {
-                    query.node = `module-${this.moduleId}`
-                }
                 this.$router.push({
-                    name: MENU_BUSINESS_HOST_AND_SERVICE,
-                    query
+                    name: MENU_BUSINESS_HOST_AND_SERVICE
                 })
             },
             handleViewFailed () {
                 this.$router.push({
-                    name: MENU_BUSINESS_HOST_APPLY_FAILED,
-                    query: this.$route.query
+                    name: 'hostApplyFailed'
                 })
             },
             handleCopyIp () {
@@ -302,7 +276,7 @@
 
 <style lang="scss" scoped>
     .failed-list {
-        padding: 15px 20px 0;
+        padding: 0 20px;
 
         .caption {
             display: flex;

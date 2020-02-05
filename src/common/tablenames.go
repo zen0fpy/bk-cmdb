@@ -17,14 +17,14 @@ const (
 	// BKTableNameProcModule the table name of the process module
 	BKTableNameProcModule = "cc_Proc2Module"
 
-	// BKTableNameProcTemplate the table name of the process template config
+	// BKTableNameProcTempalte the table name of the process template config
 	BKTableNameProcTemplate = "cc_Proc2Template"
 
 	// BKTableNameProcInstanceModel the table name of the process instance
 	BKTableNameProcInstanceModel = "cc_ProcInstanceModel"
 
-	// BKTableNameProcInstanceDetail  the table name of the process instance detail
-	BKTableNameProcInstanceDetail = "cc_ProcInstanceDetail"
+	// BKTableNameProcInstaceDetail  the table name of the process instance detail
+	BKTableNameProcInstaceDetail = "cc_ProcInstanceDetail"
 
 	// BKTableNameProcOperateTask  the table name of the process instance operater task info
 	BKTableNameProcOperateTask = "cc_ProcOpTask"
@@ -44,8 +44,8 @@ const (
 	// BKTableNameObjAttDes the table name of the object attribute
 	BKTableNameObjAttDes = "cc_ObjAttDes"
 
-	// BKTableNameObjClassification the table name of the object classification
-	BKTableNameObjClassification = "cc_ObjClassification"
+	// BKTableNameObjClassifiction the table name of the object classification
+	BKTableNameObjClassifiction = "cc_ObjClassification"
 
 	// BKTableNameInstAsst the table name of the inst association
 	BKTableNameInstAsst = "cc_InstAsst"
@@ -80,6 +80,12 @@ const (
 
 	BKTableNameHostLock = "cc_HostLock"
 
+	// Cloud sync tables
+	BKTableNameCloudTask              = "cc_CloudTask"
+	BKTableNameCloudSyncHistory       = "cc_CloudSyncHistory"
+	BKTableNameCloudResourceConfirm   = "cc_CloudResourceConfirm"
+	BKTableNameResourceConfirmHistory = "cc_ResourceConfirmHistory"
+
 	// Operation tables
 	BKTableNameChartConfig   = "cc_ChartConfig"
 	BKTableNameChartPosition = "cc_ChartPosition"
@@ -107,14 +113,12 @@ var AllTables = []string{
 	BKTableNameProcModule,
 	BKTableNameProcTemplate,
 	BKTableNameProcInstanceModel,
-	BKTableNameProcInstanceDetail,
+	BKTableNameProcInstaceDetail,
 	BKTableNameProcOperateTask,
 	BKTableNamePropertyGroup,
-	BKTableNameAsstDes,
 	BKTableNameObjDes,
-	BKTableNameObjUnique,
 	BKTableNameObjAttDes,
-	BKTableNameObjClassification,
+	BKTableNameObjClassifiction,
 	BKTableNameInstAsst,
 	BKTableNameBaseApp,
 	BKTableNameBaseHost,
@@ -141,6 +145,10 @@ var AllTables = []string{
 	BKTableNameTransaction,
 	BKTableNameIDgenerator,
 	BKTableNameHostLock,
+	BKTableNameCloudTask,
+	BKTableNameCloudSyncHistory,
+	BKTableNameCloudResourceConfirm,
+	BKTableNameResourceConfirmHistory,
 	BKTableNameObjUnique,
 	BKTableNameAsstDes,
 	BKTableNameServiceCategory,
@@ -154,9 +162,6 @@ var AllTables = []string{
 	BKTableNameChartPosition,
 	BKTableNameChartData,
 	BKTableNameHostApplyRule,
-	BKTableNameAPITask,
-	BKTableNameSetTemplateSyncStatus,
-	BKTableNameSetTemplateSyncHistory,
 }
 
 // GetInstTableName returns inst data table name
@@ -168,12 +173,32 @@ func GetInstTableName(objID string) string {
 		return BKTableNameBaseSet
 	case BKInnerObjIDModule:
 		return BKTableNameBaseModule
+	// case BKInnerObjIDObject:
+	// 	return BKTableNameBaseInst
 	case BKInnerObjIDHost:
 		return BKTableNameBaseHost
 	case BKInnerObjIDProc:
 		return BKTableNameBaseProcess
 	case BKInnerObjIDPlat:
 		return BKTableNameBasePlat
+	case BKTableNameInstAsst:
+		return BKTableNameInstAsst
+	case BKTableNameModuleHostConfig:
+		return BKTableNameModuleHostConfig
+	case BKTableNameObjClassifiction:
+		return BKTableNameObjClassifiction
+	case BKTableNameObjAttDes:
+		return BKTableNameObjAttDes
+	case BKTableNamePropertyGroup:
+		return BKTableNamePropertyGroup
+	case BKTableNameObjUnique:
+		return BKTableNameObjUnique
+	case BKTableNameAsstDes:
+		return BKTableNameAsstDes
+	case BKTableNameOperationLog:
+		return BKTableNameOperationLog
+	case BKTableNameUserAPI:
+		return BKTableNameUserAPI
 	default:
 		return BKTableNameBaseInst
 	}

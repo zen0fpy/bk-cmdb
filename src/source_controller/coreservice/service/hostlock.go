@@ -13,58 +13,57 @@
 package service
 
 import (
+	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) LockHost(ctx *rest.Contexts) {
+func (s *coreService) LockHost(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	input := new(metadata.HostLockRequest)
-	if err := ctx.DecodeInto(input); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(input); err != nil {
+		blog.Errorf("LockHost failed, decode body failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommHTTPReadBodyFailed)
 	}
 
-	err := s.core.HostOperation().LockHost(ctx.Kit, input)
+	err := s.core.HostOperation().LockHost(params, input)
 	if nil != err {
-		blog.Errorf("LockHost failed, lock host handle failed, err: %+v, input:%+v, rid:%s", err, input, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("LockHost failed, lock host handle failed, err: %+v, input:%+v, rid:%s", err, input, params.ReqID)
+		return nil, err
 	}
 
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) UnlockHost(ctx *rest.Contexts) {
+func (s *coreService) UnlockHost(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	input := new(metadata.HostLockRequest)
-	if err := ctx.DecodeInto(input); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(input); err != nil {
+		blog.Errorf("UnlockHost failed, decode body failed, err: %s, rid: %s", err.Error(), params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommHTTPReadBodyFailed)
 	}
-	err := s.core.HostOperation().UnlockHost(ctx.Kit, input)
+	err := s.core.HostOperation().UnlockHost(params, input)
 	if nil != err {
-		blog.Errorf("UnlockHost failed, unlock host handle failed, err: %s, input:%+v, rid:%s", err, input, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("UnlockHost failed, unlock host handle failed, err: %s, input:%+v, rid:%s", err, input, params.ReqID)
+		return nil, err
 	}
 
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) QueryLockHost(ctx *rest.Contexts) {
+func (s *coreService) QueryLockHost(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	input := new(metadata.QueryHostLockRequest)
-	if err := ctx.DecodeInto(input); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(input); err != nil {
+		blog.Errorf("QueryLockHost failed, decode body failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommHTTPReadBodyFailed)
 	}
-	hostLockArr, err := s.core.HostOperation().QueryHostLock(ctx.Kit, input)
+	hostLockArr, err := s.core.HostOperation().QueryHostLock(params, input)
 	if nil != err {
-		blog.Errorf("QueryLockHost failed, query host handle failed, err: %s, input:%+v, rid: %s", err.Error(), input, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("QueryLockHost failed, query host handle failed, err: %s, input:%+v, rid: %s", err.Error(), input, params.ReqID)
+		return nil, err
 	}
 	result := metadata.HostLockQueryResponse{}
 	result.Data.Info = hostLockArr
 	result.Data.Count = int64(len(hostLockArr))
-	ctx.RespEntity(result.Data)
+	return result.Data, nil
 }

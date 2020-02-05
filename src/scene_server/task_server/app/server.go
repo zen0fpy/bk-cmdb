@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/types"
+	"configcenter/src/common/version"
 	"configcenter/src/scene_server/task_server/app/options"
 	tasksvc "configcenter/src/scene_server/task_server/service"
 	"configcenter/src/storage/dal/mongo"
@@ -34,7 +36,7 @@ import (
 )
 
 func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOption) error {
-	svrInfo, err := types.NewServerInfo(op.ServConf)
+	svrInfo, err := newServerInfo(op)
 	if err != nil {
 		blog.Errorf("wrap server info failed, err: %v", err)
 		return fmt.Errorf("wrap server info failed, err: %v", err)
@@ -155,4 +157,31 @@ func (h *TaskServer) onHostConfigUpdate(previous, current cc.ProcessConfig) {
 		h.taskQueue[name] = task
 	}
 
+}
+
+func newServerInfo(op *options.ServerOption) (*types.ServerInfo, error) {
+	ip, err := op.ServConf.GetAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := op.ServConf.GetPort()
+	if err != nil {
+		return nil, err
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	info := &types.ServerInfo{
+		IP:       ip,
+		Port:     port,
+		HostName: hostname,
+		Scheme:   "http",
+		Version:  version.GetVersion(),
+		Pid:      os.Getpid(),
+	}
+	return info, nil
 }

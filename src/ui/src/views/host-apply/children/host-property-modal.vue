@@ -5,7 +5,7 @@
         :mask-close="false"
         :width="730"
         header-position="left"
-        :title="$t('选择字段')"
+        title="添加字段"
         @value-change="handleVisibleChange"
         @confirm="handleConfirm"
         @cancel="handleCancel"
@@ -28,7 +28,7 @@
                     >
                         <div
                             v-if="!property.host_apply_enabled"
-                            v-bk-tooltips.top-start="$t('该字段不支持配置')"
+                            v-bk-tooltips.top-start="'该字段不支持配置'"
                             style="outline:none"
                         >
                             {{property.bk_property_name}}
@@ -80,17 +80,14 @@
         },
         async created () {
             await this.getHostPropertyList()
-            this.propertyList = this.$tools.clone(this.configPropertyList.filter(property => property.host_apply_enabled))
+            this.propertyList = this.configPropertyList.filter(property => property.host_apply_enabled)
         },
         methods: {
             async getHostPropertyList () {
                 try {
                     const data = await this.$store.dispatch('hostApply/getProperties', {
-                        params: this.$injectMetadata(),
-                        config: {
-                            requestId: 'getHostPropertyList',
-                            fromCache: true
-                        }
+                        requestId: 'getHostPropertyList',
+                        fromCache: true
                     })
                     this.$store.commit('hostApply/setPropertyList', data)
                 } catch (e) {
@@ -119,7 +116,7 @@
 
 <style lang="scss" scoped>
     .search {
-        width: 280px;
+        width: 240px;
         margin-bottom: 10px;
     }
     .property-list {

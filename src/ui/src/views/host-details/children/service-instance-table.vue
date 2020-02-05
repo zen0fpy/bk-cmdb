@@ -64,7 +64,7 @@
         <bk-table
             v-show="localExpanded"
             v-bkloading="{ isLoading: $loading(Object.values(requestId)) }"
-            :data="list"
+            :data="flattenList"
             :row-style="{ cursor: 'pointer' }"
             @row-click="showProcessDetails">
             <bk-table-column v-for="(column, index) in header"
@@ -72,18 +72,13 @@
                 :key="column.id"
                 :prop="column.id"
                 :label="column.name">
-                <template slot-scope="{ row }">{{(row.property || {})[column.id] | formatter(column.property)}}</template>
             </bk-table-column>
         </bk-table>
     </div>
 </template>
 
 <script>
-    import {
-        MENU_BUSINESS_HOST_AND_SERVICE,
-        MENU_BUSINESS_DELETE_SERVICE
-    } from '@/dictionary/menu-symbol'
-    import { mapState } from 'vuex'
+    import { MENU_BUSINESS_HOST_AND_SERVICE } from '@/dictionary/menu-symbol'
     export default {
         props: {
             instance: {
@@ -109,13 +104,12 @@
                 header: [],
                 list: [],
                 pathToolTips: {
-                    content: this.$t('去业务拓扑添加'),
+                    content: this.$t('跳转服务拓扑'),
                     placement: 'top'
                 }
             }
         },
         computed: {
-            ...mapState('hostDetails', ['info']),
             withTemplate () {
                 return this.isModuleNode && !!this.instance.service_template_id
             },
@@ -126,6 +120,9 @@
                     auth: 'D_SERVICE_INSTANCE'
                 }]
                 return menu
+            },
+            flattenList () {
+                return this.$tools.flattenList(this.properties, this.list.map(data => data.property))
             },
             requestId () {
                 return {
@@ -193,10 +190,9 @@
             async getServiceProcessList () {
                 try {
                     this.list = await this.$store.dispatch('processInstance/getServiceInstanceProcesses', {
-                        params: {
-                            service_instance_id: this.instance.id,
-                            bk_biz_id: this.info.biz[0].bk_biz_id
-                        },
+                        params: this.$injectMetadata({
+                            service_instance_id: this.instance.id
+                        }, { injectBizId: true }),
                         config: {
                             requestId: this.requestId.processList
                         }
@@ -219,23 +215,29 @@
                     const property = this.properties.find(property => property.bk_property_id === id) || {}
                     return {
                         id: property.bk_property_id,
-                        name: this.$tools.getHeaderPropertyName(property),
-                        property
+                        name: property.bk_property_name
                     }
                 })
                 this.header = header
             },
             handleDeleteInstance () {
-                this.$router.push({
-                    name: MENU_BUSINESS_DELETE_SERVICE,
-                    params: {
-                        ids: this.instance.id
-                    },
-                    query: {
-                        from: this.$route.path,
-                        query: {
-                            ...this.$route.query,
-                            tab: 'service'
+                this.$bkInfo({
+                    title: this.$t('确认删除实例'),
+                    subTitle: this.$t('即将删除实例', { name: this.instance.name }),
+                    confirmFn: async () => {
+                        try {
+                            await this.$store.dispatch('serviceInstance/deleteServiceInstance', {
+                                config: {
+                                    data: this.$injectMetadata({
+                                        service_instance_ids: [this.instance.id]
+                                    }, { injectBizId: true }),
+                                    requestId: this.requestId.deleteProcess
+                                }
+                            })
+                            this.$success(this.$t('删除成功'))
+                            this.$emit('delete-instance', this.instance.id)
+                        } catch (e) {
+                            console.error(e)
                         }
                     }
                 })

@@ -18,12 +18,6 @@ Vue.use(magicbox, {
     'bk-input': {
         fontSize: 'medium'
     },
-    'bk-select': {
-        fontSize: 'medium'
-    },
-    'bk-big-tree': {
-        useDefaultEmpty: true
-    },
     i18n: (key, value) => i18n.t(key, value)
 })
 

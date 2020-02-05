@@ -100,7 +100,7 @@ func Upsert(ctx context.Context, db dal.RDB, tableName string, row interface{}, 
 	}
 	newData := map[string]interface{}{}
 	for key, value := range data {
-		if ignoreSet[key] {
+		if ignoreSet[key] == true {
 			continue
 		}
 		newData[key] = value

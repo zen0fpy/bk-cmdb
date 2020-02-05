@@ -14,6 +14,7 @@ package cloudsync
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/metadata"
@@ -26,7 +27,7 @@ func (c *cloud) CreateCloudSyncTask(ctx context.Context, header http.Header, inp
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(input).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(resp)
@@ -35,12 +36,12 @@ func (c *cloud) CreateCloudSyncTask(ctx context.Context, header http.Header, inp
 
 func (c *cloud) DeleteCloudSyncTask(ctx context.Context, h http.Header, id int64) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/delete/cloud/sync/task/%v"
+	subPath := fmt.Sprintf("/delete/cloud/sync/task/%v", id)
 
 	err = c.client.Delete().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -54,7 +55,7 @@ func (c *cloud) UpdateCloudSyncTask(ctx context.Context, h http.Header, data int
 	err = c.client.Put().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -68,7 +69,7 @@ func (c *cloud) SearchCloudSyncTask(ctx context.Context, h http.Header, data int
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -82,7 +83,7 @@ func (c *cloud) CreateConfirm(ctx context.Context, h http.Header, data interface
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -96,7 +97,7 @@ func (c *cloud) CheckTaskNameUnique(ctx context.Context, h http.Header, data int
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -105,12 +106,12 @@ func (c *cloud) CheckTaskNameUnique(ctx context.Context, h http.Header, data int
 
 func (c *cloud) DeleteConfirm(ctx context.Context, h http.Header, id int64) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/delete/cloud/confirm/%v"
+	subPath := fmt.Sprintf("/delete/cloud/confirm/%v", id)
 
 	err = c.client.Delete().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -124,7 +125,7 @@ func (c *cloud) SearchConfirm(ctx context.Context, h http.Header, data interface
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -138,7 +139,7 @@ func (c *cloud) CreateSyncHistory(ctx context.Context, h http.Header, data inter
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -152,7 +153,7 @@ func (c *cloud) SearchSyncHistory(ctx context.Context, h http.Header, data inter
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -166,7 +167,7 @@ func (c *cloud) CreateConfirmHistory(ctx context.Context, h http.Header, data in
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -180,7 +181,7 @@ func (c *cloud) SearchConfirmHistory(ctx context.Context, h http.Header, data in
 	err = c.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)

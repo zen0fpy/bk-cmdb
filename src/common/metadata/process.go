@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"configcenter/src/common"
+	"configcenter/src/common/blog"
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/selector"
 	"configcenter/src/common/util"
@@ -551,11 +552,8 @@ func (pt *ProcessTemplate) NewProcess(bizID int64, supplierAccount string) *Proc
 
 	processInstance.BindIP = nil
 	if IsAsDefaultValue(property.BindIP.AsDefaultValue) {
-		bindIP := property.BindIP.Value.IP()
-		if len(bindIP) > 0 {
-			processInstance.BindIP = new(string)
-			*processInstance.BindIP = bindIP
-		}
+		processInstance.BindIP = new(string)
+		*processInstance.BindIP = property.BindIP.Value.IP()
 	}
 
 	processInstance.Priority = nil
@@ -1335,6 +1333,15 @@ func (ti *PropertyString) Validate() error {
 		if len(value) == 0 {
 			return nil
 		}
+		matched, err := regexp.MatchString(common.FieldTypeSingleCharRegexp, value)
+		if err != nil {
+			blog.Errorf("Validate failed, regex:[%s], value:[%s]", common.FieldTypeSingleCharRegexp, value)
+			return fmt.Errorf("value:[%s] doesn't match regex:[%s], err: %+v", value, common.FieldTypeSingleCharRegexp, err)
+		}
+		if matched == false {
+			return fmt.Errorf("value:[%s] doesn't match regex:[%s]", value, common.FieldTypeSingleCharRegexp)
+		}
+
 	}
 	return nil
 }

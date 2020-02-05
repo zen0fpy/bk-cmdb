@@ -19,7 +19,7 @@
             <bk-tab-panel name="status" :label="$t('实时状态')">
                 <cmdb-host-status v-if="active === 'status'"></cmdb-host-status>
             </bk-tab-panel>
-            <bk-tab-panel name="service" :label="$t('服务列表')" :visible="isBusinessHost">
+            <bk-tab-panel name="service" :label="$t('服务列表')" :visible="!isAdminView">
                 <cmdb-host-service v-if="active === 'service'"></cmdb-host-service>
             </bk-tab-panel>
             <bk-tab-panel name="history" :label="$t('变更记录')">
@@ -37,6 +37,10 @@
     import cmdbHostStatus from './children/status.vue'
     import cmdbHostHistory from './children/history.vue'
     import cmdbHostService from './children/service-list.vue'
+    import {
+        MENU_BUSINESS_HOST_AND_SERVICE,
+        MENU_RESOURCE_HOST
+    } from '@/dictionary/menu-symbol'
     export default {
         components: {
             cmdbHostInfo,
@@ -48,13 +52,13 @@
         },
         data () {
             return {
-                active: this.$route.query.tab || 'property',
+                active: 'property',
                 infoHeight: '81px'
             }
         },
         computed: {
-            ...mapState('hostDetails', ['info', 'isBusinessHost']),
-            ...mapGetters('hostDetails', ['isBusinessHost']),
+            ...mapState('hostDetails', ['info']),
+            ...mapGetters(['isAdminView']),
             id () {
                 return parseInt(this.$route.params.id)
             },
@@ -89,7 +93,18 @@
         },
         methods: {
             setBreadcrumbs (ip) {
-                this.$store.commit('setTitle', `${this.$t('主机详情')}【${ip}】`)
+                const isFromBusiness = this.$route.query.from === 'business'
+                this.$store.commit('setBreadcrumbs', [{
+                    label: isFromBusiness ? this.$t('业务主机') : this.$t('主机'),
+                    route: {
+                        name: isFromBusiness ? MENU_BUSINESS_HOST_AND_SERVICE : MENU_RESOURCE_HOST,
+                        query: {
+                            node: isFromBusiness ? this.$route.query.node : undefined
+                        }
+                    }
+                }, {
+                    label: ip
+                }])
             },
             getData () {
                 this.getProperties()

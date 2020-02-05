@@ -15,14 +15,14 @@ import (
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/errors"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 	"configcenter/src/storage/dal"
 )
 
 type associationFindDataInterface interface {
-	Find(kit *rest.Kit) ([]mapstr.MapStr, uint64, errors.CCError)
+	Find(ctx core.ContextParams) ([]mapstr.MapStr, uint64, errors.CCError)
 }
 
 type associationFindData struct {
@@ -46,65 +46,65 @@ func NewSynchronizeFindAdapter(input *metadata.SynchronizeFindInfoParameter, dbP
 	}
 }
 
-func (a *associationFindData) Find(kit *rest.Kit) ([]mapstr.MapStr, uint64, errors.CCError) {
+func (a *associationFindData) Find(ctx core.ContextParams) ([]mapstr.MapStr, uint64, errors.CCError) {
 	switch a.dataType {
 	case metadata.SynchronizeOperateDataTypeAssociation:
-		return a.findAssociation(kit)
+		return a.findAssociation(ctx)
 	case metadata.SynchronizeOperateDataTypeModel:
-		return a.findModel(kit)
+		return a.findModel(ctx)
 	}
 	return nil, 0, nil
 }
 
-func (a *associationFindData) findModel(kit *rest.Kit) ([]mapstr.MapStr, uint64, errors.CCError) {
+func (a *associationFindData) findModel(ctx core.ContextParams) ([]mapstr.MapStr, uint64, errors.CCError) {
 
 	switch a.dataClassify {
 	case common.SynchronizeModelTypeBase:
-		return a.dbQueryModel(kit, common.BKTableNameObjDes)
+		return a.dbQueryModel(ctx, common.BKTableNameObjDes)
 	case common.SynchronizeModelTypeAttribute:
-		return a.dbQueryModel(kit, common.BKTableNameObjAttDes)
+		return a.dbQueryModel(ctx, common.BKTableNameObjAttDes)
 	case common.SynchronizeModelTypeAttributeGroup:
-		return a.dbQueryModel(kit, common.BKTableNamePropertyGroup)
+		return a.dbQueryModel(ctx, common.BKTableNamePropertyGroup)
 	case common.SynchronizeModelTypeClassification:
-		return a.dbQueryModel(kit, common.BKTableNameObjClassification)
+		return a.dbQueryModel(ctx, common.BKTableNameObjClassifiction)
 	}
 	return nil, 0, nil
 }
 
-func (a *associationFindData) dbQueryModel(kit *rest.Kit, tableName string) ([]mapstr.MapStr, uint64, errors.CCError) {
+func (a *associationFindData) dbQueryModel(ctx core.ContextParams, tableName string) ([]mapstr.MapStr, uint64, errors.CCError) {
 	info := make([]mapstr.MapStr, 0)
-	err := a.dbProxy.Table(tableName).Find(a.condition).Start(a.start).Limit(a.limit).All(kit.Ctx, &info)
+	err := a.dbProxy.Table(tableName).Find(a.condition).Start(a.start).Limit(a.limit).All(ctx, &info)
 	if err != nil {
-		blog.Errorf("dbQueryModel info error. error:%s,rid:%s", err.Error(), kit.Rid)
-		return nil, 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.Errorf("dbQueryModel info error. error:%s,rid:%s", err.Error(), ctx.ReqID)
+		return nil, 0, ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
-	cnt, err := a.dbProxy.Table(tableName).Find(nil).Count(kit.Ctx)
+	cnt, err := a.dbProxy.Table(tableName).Find(nil).Count(ctx)
 	if err != nil {
-		blog.Errorf("dbQueryModel count error. error:%s,rid:%s", err.Error(), kit.Rid)
-		return nil, 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.Errorf("dbQueryModel count error. error:%s,rid:%s", err.Error(), ctx.ReqID)
+		return nil, 0, ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
 	return info, cnt, nil
 }
 
-func (a *associationFindData) findAssociation(kit *rest.Kit) ([]mapstr.MapStr, uint64, errors.CCError) {
+func (a *associationFindData) findAssociation(ctx core.ContextParams) ([]mapstr.MapStr, uint64, errors.CCError) {
 	switch a.dataClassify {
 	case common.SynchronizeAssociationTypeModelHost:
-		return a.dbQueryAssociation(kit)
+		return a.dbQueryAssociation(ctx)
 	}
 	return nil, 0, nil
 }
 
-func (a *associationFindData) dbQueryAssociation(kit *rest.Kit) ([]mapstr.MapStr, uint64, errors.CCError) {
+func (a *associationFindData) dbQueryAssociation(ctx core.ContextParams) ([]mapstr.MapStr, uint64, errors.CCError) {
 	info := make([]mapstr.MapStr, 0)
-	err := a.dbProxy.Table(common.BKTableNameModuleHostConfig).Find(a.condition).Start(a.start).Limit(a.limit).All(kit.Ctx, &info)
+	err := a.dbProxy.Table(common.BKTableNameModuleHostConfig).Find(a.condition).Start(a.start).Limit(a.limit).All(ctx, &info)
 	if err != nil {
-		blog.Errorf("dbQueryAssociation info error. error:%s,rid:%s", err.Error(), kit.Rid)
-		return nil, 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.Errorf("dbQueryAssociation info error. error:%s,rid:%s", err.Error(), ctx.ReqID)
+		return nil, 0, ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
-	cnt, err := a.dbProxy.Table(common.BKTableNameModuleHostConfig).Find(nil).Count(kit.Ctx)
+	cnt, err := a.dbProxy.Table(common.BKTableNameModuleHostConfig).Find(nil).Count(ctx)
 	if err != nil {
-		blog.Errorf("dbQueryAssociation count error. error:%s,rid:%s", err.Error(), kit.Rid)
-		return nil, 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.Errorf("dbQueryAssociation count error. error:%s,rid:%s", err.Error(), ctx.ReqID)
+		return nil, 0, ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
 
 	return info, cnt, nil

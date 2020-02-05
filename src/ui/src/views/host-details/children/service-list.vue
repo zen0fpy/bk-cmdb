@@ -72,14 +72,10 @@
             </service-instance-table>
         </div>
         <bk-table v-if="!instances.length" :data="[]" class="mb10">
-            <cmdb-table-empty
-                slot="empty"
-                :stuff="emptyStuff">
-                <div class="empty-text">
-                    <img src="../../../assets/images/empty-content.png" alt="">
-                    <p>{{$t('暂无服务实例')}}，<span @click="handleGoAddInstance">{{$t('去业务拓扑添加')}}</span></p>
-                </div>
-            </cmdb-table-empty>
+            <div slot="empty" class="empty-text">
+                <img src="../../../assets/images/empty-content.png" alt="">
+                <p>{{$t('暂无服务实例')}}，<span @click="handleGoAddInstance">{{$t('去业务拓扑添加')}}</span></p>
+            </div>
         </bk-table>
         <bk-pagination v-if="instances.length"
             class="pagination"
@@ -108,10 +104,7 @@
 </template>
 
 <script>
-    import {
-        MENU_BUSINESS_HOST_AND_SERVICE,
-        MENU_BUSINESS_DELETE_SERVICE
-    } from '@/dictionary/menu-symbol'
+    import { MENU_BUSINESS_HOST_AND_SERVICE } from '@/dictionary/menu-symbol'
     import { mapState } from 'vuex'
     import serviceInstanceTable from './service-instance-table.vue'
     export default {
@@ -119,7 +112,6 @@
             serviceInstanceTable
         },
         data () {
-            const serverSwitchViewTips = window.localStorage.getItem('serverSwitchViewTips')
             return {
                 searchSelect: [
                     {
@@ -156,7 +148,7 @@
                 filter: [],
                 instances: [],
                 currentView: 'label',
-                checkViewTipsStatus: serverSwitchViewTips === null,
+                checkViewTipsStatus: this.$store.getters['featureTipsParams'].hostServiceInstanceCheckView,
                 historyLabels: {},
                 propertyGroups: [],
                 properties: [],
@@ -168,12 +160,6 @@
             ...mapState('hostDetails', ['info']),
             host () {
                 return this.info.host || {}
-            },
-            emptyStuff () {
-                return {
-                    type: this.searchSelectData.length ? 'search' : 'default',
-                    payload: {}
-                }
             }
         },
         watch: {
@@ -234,18 +220,17 @@
                     const searchKey = this.searchSelectData.find(item => (item.id === 0 && item.hasOwnProperty('values'))
                         || (![0, 1].includes(item.id) && !item.hasOwnProperty('values')))
                     const data = await this.$store.dispatch('serviceInstance/getHostServiceInstances', {
-                        params: {
+                        params: this.$injectMetadata({
                             page: {
                                 start: (this.pagination.current - 1) * this.pagination.size,
                                 limit: this.pagination.size
                             },
                             bk_host_id: this.host.bk_host_id,
-                            bk_biz_id: this.info.biz[0].bk_biz_id,
                             search_key: searchKey
                                 ? searchKey.hasOwnProperty('values') ? searchKey.values[0].name : searchKey.name
                                 : '',
                             selectors: this.getSelectorParams()
-                        }
+                        }, { injectBizId: true })
                     })
                     if (data.count && !data.info.length) {
                         this.pagination.current -= 1
@@ -306,9 +291,7 @@
             },
             async getHistoryLabel () {
                 const historyLabels = await this.$store.dispatch('instanceLabel/getHistoryLabel', {
-                    params: {
-                        bk_biz_id: this.info.biz[0].bk_biz_id
-                    },
+                    params: this.$injectMetadata({}, { injectBizId: true }),
                     config: {
                         requestId: 'getHistoryLabel',
                         cancelPrevious: true
@@ -358,16 +341,25 @@
                 if (disabled) {
                     return false
                 }
-                this.$router.push({
-                    name: MENU_BUSINESS_DELETE_SERVICE,
-                    params: {
-                        ids: this.checked.map(instance => instance.id).join('/')
-                    },
-                    query: {
-                        from: this.$route.path,
-                        query: {
-                            ...this.$route.query,
-                            tab: 'service'
+                this.$bkInfo({
+                    title: this.$t('确认删除实例'),
+                    subTitle: this.$t('即将删除选中的实例', { count: this.checked.length }),
+                    confirmFn: async () => {
+                        try {
+                            const serviceInstanceIds = this.checked.map(instance => instance.id)
+                            await this.$store.dispatch('serviceInstance/deleteServiceInstance', {
+                                config: {
+                                    data: this.$injectMetadata({
+                                        service_instance_ids: serviceInstanceIds
+                                    }, { injectBizId: true }),
+                                    requestId: 'batchDeleteServiceInstance'
+                                }
+                            })
+                            this.$success(this.$t('删除成功'))
+                            this.getHostSeriveInstances()
+                            this.checked = []
+                        } catch (e) {
+                            console.error(e)
                         }
                     }
                 })
@@ -416,7 +408,7 @@
                 this.currentView = value
             },
             handleCheckViewStatus () {
-                window.localStorage.setItem('serverSwitchViewTips', false)
+                this.$store.commit('setFeatureTipsParams', 'hostServiceInstanceCheckView')
                 this.$refs.popoverCheckView.instance.hide()
             },
             handleConditionSelect (cur, index) {
@@ -437,9 +429,9 @@
                     name: MENU_BUSINESS_HOST_AND_SERVICE
                 })
             },
-            handleShowProcessDetails ({ property }) {
+            handleShowProcessDetails (inst) {
                 this.showDetails = true
-                this.processInst = property
+                this.processInst = inst
             }
         }
     }

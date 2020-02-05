@@ -67,7 +67,6 @@
                             :show-condition="false"
                             :placeholder="$t('请输入实例名称或选择标签')"
                             :data="searchSelect"
-                            :max-width="280"
                             v-model="searchSelectData"
                             @menu-child-condition-select="handleConditionSelect"
                             @change="handleSearch">
@@ -167,7 +166,6 @@
     import serviceInstanceEmpty from './service-instance-empty.vue'
     import batchEditLabel from './batch-edit-label.vue'
     import cmdbEditLabel from './edit-label.vue'
-    import { MENU_BUSINESS_DELETE_SERVICE } from '@/dictionary/menu-symbol'
     export default {
         components: {
             serviceInstanceTable,
@@ -305,12 +303,9 @@
             }
         },
         watch: {
-            currentNode: {
-                immediate: true,
-                handler (node) {
-                    if (node && node.data.bk_obj_id === 'module') {
-                        this.getData()
-                    }
+            async currentNode (node) {
+                if (node && node.data.bk_obj_id === 'module') {
+                    this.getData()
                 }
             },
             bindIp (value) {
@@ -318,6 +313,9 @@
             },
             checked () {
                 this.isCheckAll = (this.checked.length === this.instances.length) && this.checked.length !== 0
+            },
+            searchSelectData (searchSelectData) {
+                if (!searchSelectData.length && this.inSearch) this.inSearch = false
             }
         },
         async created () {
@@ -437,10 +435,6 @@
                     this.isExpandAll = false
                     this.instances = data.info
                     this.pagination.count = data.count
-                    if (!this.searchSelectData.length && this.inSearch) this.inSearch = false
-                    this.$nextTick(() => {
-                        data.info.length && this.handleCheckALL(false)
-                    })
                 } catch (e) {
                     console.error(e)
                     this.instances = []
@@ -591,7 +585,7 @@
                 this.processForm.instance = processInstance.property
                 this.processForm.show = true
                 this.$nextTick(() => {
-                    this.bindIp = this.$tools.getInstFormValues(this.processForm.properties, processInstance.property, false)['bind_ip']
+                    this.bindIp = this.$tools.getInstFormValues(this.processForm.properties, processInstance.property)['bind_ip']
                 })
 
                 const processTemplateId = processInstance.relation.process_template_id
@@ -679,7 +673,7 @@
                 if (processes.length) {
                     const process = processes[0].property
                     name.push(process.bk_process_name)
-                    process.port && name.push(process.port)
+                    name.push(process.port)
                 }
                 instance.name = name.join('_')
             },
@@ -733,19 +727,19 @@
                         setId: this.currentNode.parent.data.bk_inst_id
                     },
                     query: {
-                        title: this.currentNode.data.bk_inst_name,
-                        node: this.currentNode.id,
-                        tab: 'serviceInstance'
+                        title: this.currentNode.data.bk_inst_name
                     }
                 })
             },
             handleCheckALL (checked) {
+                this.searchSelectData = []
                 this.isCheckAll = checked
                 this.$refs.serviceInstanceTable.forEach(table => {
                     table.checked = checked
                 })
             },
             handleExpandAll (expanded) {
+                this.searchSelectData = []
                 this.isExpandAll = expanded
                 this.$refs.serviceInstanceTable.forEach(table => {
                     table.localExpanded = expanded
@@ -760,11 +754,32 @@
                 if (disabled) {
                     return false
                 }
-                this.$router.push({
-                    name: MENU_BUSINESS_DELETE_SERVICE,
-                    params: {
-                        ids: this.checked.map(instance => instance.id).join('/'),
-                        moduleId: this.currentNode.data.bk_inst_id
+                this.$bkInfo({
+                    title: this.$t('确认删除实例'),
+                    subTitle: this.$t('即将删除选中的实例', { count: this.checked.length }),
+                    extCls: 'bk-dialog-sub-header-center',
+                    confirmFn: async () => {
+                        try {
+                            const serviceInstanceIds = this.checked.map(instance => instance.id)
+                            const deleteNum = serviceInstanceIds.length
+                            await this.$store.dispatch('serviceInstance/deleteServiceInstance', {
+                                config: {
+                                    data: this.$injectMetadata({
+                                        service_instance_ids: serviceInstanceIds
+                                    }, { injectBizId: true }),
+                                    requestId: 'batchDeleteServiceInstance'
+                                }
+                            })
+                            this.currentNode.data.service_instance_count = this.currentNode.data.service_instance_count - deleteNum
+                            this.currentNode.parents.forEach(node => {
+                                node.data.service_instance_count = node.data.service_instance_count - deleteNum
+                            })
+                            this.$success(this.$t('删除成功'))
+                            this.getServiceInstances()
+                            this.checked = []
+                        } catch (e) {
+                            console.error(e)
+                        }
                     }
                 })
             },
@@ -967,10 +982,6 @@
         max-width: 280px;
         height: 34px;
         z-index: 99;
-        white-space: normal;
-        /deep/ .search-input {
-            padding-right: 10px;
-        }
         .bk-search-select {
             position: absolute;
             top: 0;

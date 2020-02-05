@@ -66,8 +66,8 @@ export function timezone (value) {
 }
 
 export function bool (value) {
-    if (['true', 'false'].includes(String(value))) {
-        return String(value)
+    if (['true', 'false'].includes(value.toString())) {
+        return value.toString()
     }
     return '--'
 }
@@ -82,16 +82,12 @@ export function enumeration (value, options) {
 
 export function foreignkey (value) {
     if (Array.isArray(value)) {
-        return value.map(inst => `${inst.bk_inst_name}[${inst.bk_inst_id}]`).join(',')
+        return value.map(inst => inst.bk_inst_name).join(',')
     }
     if (String(value).length) {
         return value
     }
     return '--'
-}
-
-export function list (value) {
-    return defaultFormatter(value)
 }
 
 const formatterMap = {
@@ -105,7 +101,6 @@ const formatterMap = {
     timezone,
     bool,
     foreignkey,
-    list,
     enum: enumeration
 }
 

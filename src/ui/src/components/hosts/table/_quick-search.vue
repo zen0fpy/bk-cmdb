@@ -12,13 +12,12 @@
             @on-selected="handleSelect">
         </cmdb-selector>
         <div v-if="property" class="filter-value-container">
-            <component class="filter-value fl"
-                v-if="['enum', 'list'].includes(property['bk_property_type'])"
-                :is="`cmdb-form-${property['bk_property_type']}`"
+            <cmdb-form-enum class="filter-value fl"
+                v-if="property['bk_property_type'] === 'enum'"
                 :options="property.option || []"
                 :allow-clear="true"
                 v-model.trim="value">
-            </component>
+            </cmdb-form-enum>
             <cmdb-form-int class="filter-value fl"
                 v-else-if="property['bk_property_type'] === 'int'"
                 v-model="value">
@@ -35,7 +34,6 @@
             <comonent class="filter-value"
                 v-else
                 :is="`cmdb-form-${property['bk_property_type']}`"
-                :unit="property['unit']"
                 v-model.trim="value">
             </comonent>
         </div>

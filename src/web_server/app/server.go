@@ -16,6 +16,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"plugin"
 	"strings"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"configcenter/src/common/backbone"
 	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/types"
+	"configcenter/src/common/version"
 	"configcenter/src/storage/dal/redis"
 	"configcenter/src/web_server/app/options"
 	"configcenter/src/web_server/logics"
@@ -37,7 +40,7 @@ type WebServer struct {
 
 func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOption) error {
 
-	svrInfo, err := types.NewServerInfo(op.ServConf)
+	svrInfo, err := newServerInfo(op)
 	if err != nil {
 		return fmt.Errorf("wrap server info failed, err: %v", err)
 	}
@@ -108,6 +111,14 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	service.Logics = &logics.Logics{Engine: engine}
 	service.Config = &webSvr.Config
 
+	if webSvr.Config.LoginVersion != common.BKDefaultLoginUserPluginVersion && webSvr.Config.LoginVersion != "" {
+		service.VersionPlg, err = plugin.Open("login.so")
+		if nil != err {
+			service.VersionPlg = nil
+			return fmt.Errorf("load login so err: %v", err)
+		}
+	}
+
 	err = backbone.StartServer(ctx, cancel, engine, service.WebService(), false)
 	if err != nil {
 		return err
@@ -140,6 +151,7 @@ func (w *WebServer) onServerConfigUpdate(previous, current cc.ProcessConfig) {
 	w.Config.Site.HttpsDomainUrl = current.ConfigMap["site.https_domain_url"]
 
 	w.Config.Session.Name = current.ConfigMap["session.name"]
+	w.Config.Session.Skip = current.ConfigMap["session.skip"]
 	w.Config.Session.Host = current.ConfigMap["session.host"]
 	w.Config.Session.Port = current.ConfigMap["session.port"]
 	w.Config.Session.Address = current.ConfigMap["session.address"]
@@ -164,4 +176,31 @@ func (w *WebServer) onServerConfigUpdate(previous, current cc.ProcessConfig) {
 //Stop the ccapi server
 func (ccWeb *WebServer) Stop() error {
 	return nil
+}
+
+func newServerInfo(op *options.ServerOption) (*types.ServerInfo, error) {
+	ip, err := op.ServConf.GetAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := op.ServConf.GetPort()
+	if err != nil {
+		return nil, err
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	info := &types.ServerInfo{
+		IP:       ip,
+		Port:     port,
+		HostName: hostname,
+		Scheme:   "http",
+		Version:  version.GetVersion(),
+		Pid:      os.Getpid(),
+	}
+	return info, nil
 }

@@ -86,10 +86,8 @@
                     :key="collection.id"
                     :id="collection.id"
                     :name="collection.name">
-                    <div class="collection-item">
-                        <span class="collection-name" :title="collection.name">{{collection.name}}</span>
-                        <i class="bk-icon icon-close" @click.stop="handleDeleteCollection(collection)"></i>
-                    </div>
+                    <span class="collection-name" :title="collection.name">{{collection.name}}</span>
+                    <i class="bk-icon icon-close" @click.stop="handleDeleteCollection(collection)"></i>
                 </bk-option>
                 <div slot="extension">
                     <a href="javascript:void(0)" class="collection-create" @click="handleCreateCollection">
@@ -335,8 +333,7 @@
                     query: {
                         sourceModel: this.selectedNode.data.bk_obj_id,
                         sourceId: this.selectedNode.data.bk_inst_id,
-                        resources: this.$parent.table.selection.map(item => item.host.bk_host_id).join(','),
-                        node: this.selectedNode.id
+                        resources: this.$parent.table.selection.map(item => item.host.bk_host_id).join(',')
                     }
                 })
             },
@@ -409,8 +406,7 @@
                     },
                     query: {
                         resources: selected.map(item => item.host.bk_host_id).join(','),
-                        title: this.selectedNode.data.bk_inst_name,
-                        node: this.selectedNode.id
+                        title: this.selectedNode.data.bk_inst_name
                     }
                 })
             },
@@ -498,24 +494,6 @@
             }
         }
     }
-    /deep/ {
-        .collection-item {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            &:hover {
-                .icon-close {
-                    display: block;
-                }
-            }
-            .collection-name {
-                @include ellipsis;
-            }
-            .icon-close {
-                display: none;
-                color: #979BA5;
-            }
-        }
+    .clipboard-list {
     }
 </style>

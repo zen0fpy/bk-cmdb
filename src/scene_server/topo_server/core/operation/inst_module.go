@@ -258,7 +258,7 @@ func (m *module) IsModuleNameDuplicateError(params types.ContextParams, bizID, s
 
 	// 检测模块名重复并返回定制提示信息
 	nameDuplicateFilter := &metadata.QueryCondition{
-		Page: metadata.BasePage{
+		Limit: metadata.SearchLimit{
 			Limit: 1,
 		},
 		Condition: map[string]interface{}{

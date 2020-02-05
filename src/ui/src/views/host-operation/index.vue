@@ -4,12 +4,9 @@
     }">
         <div class="info clearfix mb20">
             <label class="info-label fl">{{$t('已选主机')}}：</label>
-            <div class="info-content">
-                <i18n path="N台主机">
-                    <b class="info-count" place="count">{{resources.length}}</b>
-                </i18n>
-                <i class="edit-trigger icon icon-cc-edit" @click="handleChangeHost"></i>
-            </div>
+            <i18n tag="div" path="N台主机" class="info-content">
+                <b class="info-count" place="count">{{resources.length}}</b>
+            </i18n>
         </div>
         <div class="info clearfix mb20" v-if="type !== 'remove'">
             <label class="info-label fl">{{$t('转移到')}}：</label>
@@ -32,7 +29,7 @@
                     <li class="module-item is-trigger"
                         v-if="type === 'business'"
                         @click="handleChangeModule">
-                        <i class="icon icon-cc-edit"></i>
+                        <i class="icon-cc-plus"></i>
                     </li>
                 </ul>
                 <div class="module-grep"></div>
@@ -77,7 +74,7 @@
             <bk-button theme="primary" :disabled="isSameModule" @click="handleConfrim">{{confirmText}}</bk-button>
             <bk-button class="ml10" theme="default" @click="handleCancel">{{$t('取消')}}</bk-button>
         </div>
-        <cmdb-dialog v-model="dialog.show" :width="dialog.width" :height="460" :body-scroll="false">
+        <cmdb-dialog v-model="dialog.show" :width="dialog.width" :height="460">
             <component
                 :is="dialog.component"
                 :confirm-text="$t('确定')"
@@ -94,7 +91,6 @@
     import DeletedServiceInstance from './children/deleted-service-instance.vue'
     import MoveToIdleHost from './children/move-to-idle-host.vue'
     import ModuleSelector from '@/views/business-topology/host/module-selector.vue'
-    import HostSelector from '@/views/business-topology/host/host-selector.vue'
     import HostAttrsAutoApply from './children/host-attrs-auto-apply.vue'
     import {
         MENU_BUSINESS_TRANSFER_HOST,
@@ -108,7 +104,6 @@
             [DeletedServiceInstance.name]: DeletedServiceInstance,
             [MoveToIdleHost.name]: MoveToIdleHost,
             [ModuleSelector.name]: ModuleSelector,
-            [HostSelector.name]: HostSelector,
             [HostAttrsAutoApply.name]: HostAttrsAutoApply
         },
         data () {
@@ -191,8 +186,8 @@
             },
             availableTabList () {
                 const map = {
-                    remove: ['deletedServiceInstance', 'moveToIdleHost', 'hostAttrsAutoApply'],
-                    idle: ['deletedServiceInstance', 'hostAttrsAutoApply'],
+                    remove: ['deletedServiceInstance', 'moveToIdleHost'],
+                    idle: ['deletedServiceInstance'],
                     business: ['createServiceInstance', 'deletedServiceInstance', 'hostAttrsAutoApply']
                 }
                 const available = map[this.type]
@@ -209,8 +204,6 @@
                         tab.confirmed = false
                     }
                 })
-                const hasActiveTab = tabList.find(tab => tab === this.activeTab)
-                if (!hasActiveTab) this.tab.active = null
             },
             activeTab (tab) {
                 if (!tab) return
@@ -220,10 +213,7 @@
         async created () {
             this.resolveData(this.$route)
             this.setBreadcrumbs()
-            await Promise.all([
-                this.getTopologyModels(),
-                this.getHostInfo()
-            ])
+            await this.getTopologyModels()
             this.getPreviewData()
         },
         mounted () {
@@ -232,9 +222,8 @@
         beforeDestroy () {
             removeResizeListener(this.$refs.changeInfo, this.resizeHandler)
         },
-        async beforeRouteUpdate (to, from, next) {
+        beforeRouteUpdate (to, from, next) {
             this.resolveData(to)
-            await this.getHostInfo()
             this.$nextTick(this.setBreadcrumbs)
             this.getPreviewData()
             next()
@@ -280,6 +269,14 @@
                     remove: this.$t('移除主机')
                 }
                 this.$store.commit('setTitle', titleMap[this.type])
+                this.$store.commit('setBreadcrumbs', [{
+                    label: this.$t('业务拓扑'),
+                    route: {
+                        name: MENU_BUSINESS_HOST_AND_SERVICE
+                    }
+                }, {
+                    label: titleMap[this.type]
+                }])
             },
             async getTopologyModels () {
                 try {
@@ -357,9 +354,8 @@
             },
             setHostAttrsAutoApply (data) {
                 const conflictInfo = (data || []).map(item => item.host_apply_plan)
-                const conflictList = conflictInfo.filter(item => item.conflicts.length || item.update_fields.length)
                 const tab = this.tabList.find(tab => tab.id === 'hostAttrsAutoApply')
-                tab.props.info = Object.freeze(conflictList)
+                tab.props.info = Object.freeze(conflictInfo)
             },
             setCreateServiceInstance (data) {
                 const instanceInfo = []
@@ -373,11 +369,12 @@
                 })
                 const tab = this.tabList.find(tab => tab.id === 'createServiceInstance')
                 tab.props.info = Object.freeze(instanceInfo)
+                this.setHostInfo(data)
             },
-            async getHostInfo () {
+            async setHostInfo (data) {
                 try {
                     const result = await this.$store.dispatch('hostSearch/searchHost', {
-                        params: this.getSearchHostParams(),
+                        params: this.getSearchHostParams(data),
                         config: {
                             requestId: this.request.host
                         }
@@ -387,7 +384,7 @@
                     console.error(e)
                 }
             },
-            getSearchHostParams () {
+            getSearchHostParams (data) {
                 const params = {
                     bk_biz_id: this.bizId,
                     ip: { data: [], exact: 0, flag: 'bk_host_innerip|bk_host_outerip' },
@@ -398,7 +395,7 @@
                 hostCondition.condition.push({
                     field: 'bk_host_id',
                     operator: '$in',
-                    value: this.resources
+                    value: data.map(item => item.bk_host_id)
                 })
                 return params
             },
@@ -467,36 +464,13 @@
                 this.tab.active = tab.id
             },
             handleChangeModule () {
-                const props = {
+                this.dialog.props = {
                     moduleType: this.type,
                     title: this.type === 'idle' ? this.$t('转移主机到空闲模块') : this.$t('转移主机到业务模块'),
                     defaultChecked: this.targetModules
                 }
-                const selection = this.hostInfo
-                const firstSelectionModules = selection[0].module.map(module => module.bk_module_id).sort()
-                const firstSelectionModulesStr = firstSelectionModules.join(',')
-                const allSame = selection.slice(1).every(item => {
-                    const modules = item.module.map(module => module.bk_module_id).sort().join(',')
-                    return modules === firstSelectionModulesStr
-                })
-                if (allSame) {
-                    props.previousModules = firstSelectionModules
-                }
-                this.dialog.props = props
                 this.dialog.width = 720
                 this.dialog.component = ModuleSelector.name
-                this.dialog.show = true
-            },
-            handleChangeHost () {
-                const props = {
-                    exist: [...this.hostInfo]
-                }
-                if (this.type === 'remove') {
-                    props.displayNodes = [`${this.$route.query.sourceModel}-${this.$route.query.sourceId}`]
-                }
-                this.dialog.props = props
-                this.dialog.width = 850
-                this.dialog.component = HostSelector.name
                 this.dialog.show = true
             },
             handleDialogCancel () {
@@ -506,22 +480,7 @@
                 if (this.dialog.component === ModuleSelector.name) {
                     this.gotoTransferPage(...arguments)
                     this.dialog.show = false
-                } else if (this.dialog.component === HostSelector.name) {
-                    this.refreshRemoveHost(...arguments)
-                    this.dialog.show = false
                 }
-            },
-            refreshRemoveHost (hosts) {
-                this.$router.replace({
-                    name: MENU_BUSINESS_TRANSFER_HOST,
-                    params: {
-                        type: this.$route.params.type
-                    },
-                    query: {
-                        ...this.$route.query,
-                        resources: hosts.map(data => data.host.bk_host_id).join(',')
-                    }
-                })
             },
             gotoTransferPage (modules) {
                 this.$router.replace({
@@ -603,9 +562,6 @@
 </script>
 
 <style lang="scss" scoped>
-    .layout {
-        padding: 15px 0 0 0;
-    }
     .info {
         .info-label {
             width: 128px;
@@ -624,15 +580,6 @@
             .module-grep {
                 border-top: 1px solid $borderColor;
                 margin-top: 10px;
-            }
-            .edit-trigger {
-                @include inlineBlock;
-                margin-left: 10px;
-                color: $primaryColor;
-                cursor: pointer;
-                &:hover {
-                    color: #1964E1;
-                }
             }
         }
     }
@@ -658,17 +605,12 @@
                 padding: 0 12px 0 25px;
             }
             &.is-trigger {
+                width: 40px;
                 padding: 0;
                 text-align: center;
                 font-size: 0;
                 cursor: pointer;
-                border-color: transparent;
-                color: $primaryColor;
-                &:hover {
-                    color: #1964E1;
-                    border-color: transparent;
-                }
-                .icon-cc-edit {
+                .icon-cc-plus {
                     font-size: 14px;
                 }
             }

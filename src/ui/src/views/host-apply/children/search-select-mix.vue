@@ -4,18 +4,14 @@
         :filter="true"
         :filter-menu-method="filterMenuMethod"
         :filter-children-method="filterChildrenMethod"
-        :show-condition="false"
-        :show-popover-tag-change="false"
-        :strink="false"
+        :condition="ORCondition"
         v-model="searchValue"
-        :placeholder="$t('关键字/字段值')"
+        placeholder="关键字/字段值"
         @change="handleChange"
-        @menu-select="handleMenuSelect"
-        @key-enter="handleKeyEnter"
-        @input-focus="handleFocus"
-        @input-click-outside="handleBlur">
+        @menu-select="handleMenuSelect">
         <template slot="nextfix">
-            <i class="bk-icon icon-close-circle-shape" v-show="showClear && searchValue.length" @click.stop="handleClear"></i>
+            <i class="bk-icon icon-close-circle-shape" v-show="searchValue.length" @click.stop="handleClear"></i>
+            <i class="bk-icon icon-search" @click.stop="handleSearch"></i>
         </template>
     </bk-search-select>
 </template>
@@ -23,24 +19,18 @@
     import TIMEZONE from '@/components/ui/form/timezone.json'
     import Bus from '@/utils/bus'
     export default {
-        components: {},
+        components: {
+
+        },
         data () {
             return {
-                showClear: false,
                 searchOptions: [],
-                fullOptions: [],
                 searchValue: [],
                 properties: [],
-                currentMenu: null
-            }
-        },
-        watch: {
-            searchValue (searchValue) {
-                this.searchOptions.forEach(option => {
-                    const selected = searchValue.some(value => value.id === option.id && value.name === option.name && value.type === option.type)
-                    option.disabled = selected
-                })
-                this.handleSearch()
+                currentMenu: null,
+                ORCondition: {
+                    name: this.$i18n.locale === 'en' ? 'OR' : '或'
+                }
             }
         },
         created () {
@@ -49,11 +39,12 @@
         methods: {
             async initOptions () {
                 try {
-                    const properties = await this.$store.dispatch('hostApply/getProperties', { params: this.$injectMetadata() })
-                    const availableProperties = properties.filter(property => property.host_apply_enabled)
+                    const properties = await this.$store.dispatch('hostApply/getProperties')
+                    const unsupportType = ['date', 'time', 'objuser']
+                    const availableProperties = properties.filter(property => property.host_apply_enabled && !unsupportType.includes(property.bk_property_type))
                     this.searchOptions = availableProperties.map(property => {
                         const type = property.bk_property_type
-                        const data = { id: property.id, name: property.bk_property_name, type, disabled: false }
+                        const data = { id: property.id, name: property.bk_property_name, type }
                         if (type === 'enum') {
                             data.children = (property.option || []).map(option => ({ id: option.id, name: option.name, disabled: false }))
                             data.multiable = true
@@ -70,7 +61,6 @@
                         }
                         return data
                     })
-                    this.fullOptions = this.searchOptions.slice(0)
                 } catch (e) {
                     console.error(e)
                 }
@@ -81,15 +71,7 @@
                     keywords.pop()
                     this.searchValue = values.filter(value => !keywords.includes(value))
                 }
-            },
-            handleKeyEnter () {
                 this.currentMenu = null
-            },
-            handleFocus () {
-                this.showClear = true
-            },
-            handleBlur () {
-                this.showClear = false
             },
             handleClear () {
                 this.searchValue = []
@@ -101,46 +83,59 @@
             getSearchValue () {
                 const params = {
                     query_filter: {
-                        condition: 'AND',
+                        condition: 'OR',
                         rules: []
                     }
                 }
-                const rules = params.query_filter.rules
-                this.searchValue.forEach(item => {
-                    if (item.hasOwnProperty('type')) {
-                        if (item.values.length === 1) {
-                            const value = item.values[0]
-                            const isAny = value.id === '*'
-                            const rule = { field: String(item.id) }
-                            if (isAny) {
-                                rule.operator = 'exist'
-                            } else {
-                                rule.operator = 'contains'
-                                rule.value = String(value.id)
-                            }
-                            rules.push(rule)
-                        } else {
-                            const subRule = {
-                                condition: 'OR',
-                                rules: []
-                            }
-                            item.values.forEach(value => {
-                                subRule.rules.push({
-                                    field: String(item.id),
-                                    operator: 'contains',
-                                    value: String(value.id)
-                                })
-                            })
-                            rules.push(subRule)
-                        }
-                    } else {
-                        rules.push({
-                            field: 'keyword',
-                            operator: 'contains',
-                            value: String(item.id)
-                        })
+                const filterGroup = []
+                const lastGroup = this.searchValue.reduce((group, value) => {
+                    if (!value.hasOwnProperty('id') && group.length) {
+                        filterGroup.push(group)
+                        return []
                     }
-                })
+                    return [...group, value]
+                }, [])
+                filterGroup.push(lastGroup)
+
+                if (filterGroup.length) {
+                    filterGroup.forEach(group => {
+                        const rule = {
+                            condition: 'AND',
+                            rules: []
+                        }
+                        params.query_filter.rules.push(rule)
+                        group.forEach(item => {
+                            if (item.hasOwnProperty('type')) {
+                                if (item.values.length === 1) {
+                                    rule.rules.push({
+                                        field: String(item.id),
+                                        operator: 'contains',
+                                        value: item.values[0].id === '*' ? '' : item.values[0].id
+                                    })
+                                } else {
+                                    const subRules = {
+                                        condition: 'OR',
+                                        rules: []
+                                    }
+                                    rule.rules.push(subRules)
+                                    item.values.forEach(value => {
+                                        subRules.rules.push({
+                                            field: String(item.id),
+                                            operator: 'contains',
+                                            value: value.id === '*' ? '' : value.id
+                                        })
+                                    })
+                                }
+                            } else {
+                                rule.rules.push({
+                                    field: 'keyword',
+                                    operator: 'contains',
+                                    value: item.id
+                                })
+                            }
+                        })
+                    })
+                }
                 return params
             },
             handleMenuSelect (item, index) {

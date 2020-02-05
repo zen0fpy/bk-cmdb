@@ -13,7 +13,7 @@
 package model
 
 import (
-	"configcenter/src/common/http/rest"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
 // ATTENTIONS: the dependent methods of the other module
@@ -22,14 +22,14 @@ import (
 type OperationDependences interface {
 
 	// HasInstance used to check if the model has some instances
-	HasInstance(kit *rest.Kit, objIDS []string) (exists bool, err error)
+	HasInstance(ctx core.ContextParams, objIDS []string) (exists bool, err error)
 
 	// HasAssociation used to check if the model has some associations
-	HasAssociation(kit *rest.Kit, objIDS []string) (exists bool, err error)
+	HasAssociation(ctx core.ContextParams, objIDS []string) (exists bool, err error)
 
 	// CascadeDeleteAssociation cascade delete all associated data (included instances, model association, instance association) associated with modelObjID
-	CascadeDeleteAssociation(kit *rest.Kit, objIDS []string) error
+	CascadeDeleteAssociation(ctx core.ContextParams, objIDS []string) error
 
 	// CascadeDeleteInstances cascade delete all instances(included instances, instance association) associated with modelObjID
-	CascadeDeleteInstances(kit *rest.Kit, objIDS []string) error
+	CascadeDeleteInstances(ctx core.ContextParams, objIDS []string) error
 }

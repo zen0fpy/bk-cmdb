@@ -14,19 +14,6 @@ export default [{
         menu: {
             i18n: '同步模板',
             relative: MENU_BUSINESS_HOST_AND_SERVICE
-        },
-        layout: {
-            previous: (view) => {
-                const query = view.$route.query
-                const params = {
-                    name: query.form ? query.form : MENU_BUSINESS_HOST_AND_SERVICE,
-                    query: {
-                        tab: 'serviceInstance',
-                        node: 'module-' + view.routerParams.moduleId
-                    }
-                }
-                return params
-            }
         }
     })
 }, {
@@ -38,19 +25,6 @@ export default [{
         menu: {
             i18n: '同步模板',
             relative: MENU_BUSINESS_SERVICE_TEMPLATE
-        },
-        layout: {
-            previous: (view) => {
-                const query = view.$route.query
-                const params = {
-                    name: query.form ? query.form : MENU_BUSINESS_SERVICE_TEMPLATE,
-                    params: {
-                        templateId: query.templateId,
-                        active: 'instance'
-                    }
-                }
-                return params
-            }
         }
     })
 }]

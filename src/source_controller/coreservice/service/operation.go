@@ -13,233 +13,227 @@
 package service
 
 import (
-	"context"
 	"strconv"
 	"time"
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/util"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) SearchInstCount(ctx *rest.Contexts) {
-	opt := make(map[string]interface{})
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
+func (s *coreService) SearchInstCount(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	opt := mapstr.MapStr{}
+
+	count, err := s.core.StatisticOperation().SearchInstCount(params, opt)
+	if err != nil {
+		return 0, err
 	}
 
-	count, err := s.core.StatisticOperation().SearchInstCount(ctx.Kit, opt)
-	if err != nil {
-		ctx.RespEntityWithError(0, err)
-		return
-	}
-	ctx.RespEntity(count)
+	return count, nil
 }
 
-func (s *coreService) SearchChartDataCommon(ctx *rest.Contexts) {
+func (s *coreService) SearchChartDataCommon(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	condition := metadata.ChartConfig{}
-	if err := ctx.DecodeInto(&condition); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(&condition); err != nil {
+		blog.Errorf("search chart data fail, marshal chart config fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
-	result, err := s.core.StatisticOperation().SearchChartDataCommon(ctx.Kit, condition)
+	result, err := s.core.StatisticOperation().SearchChartDataCommon(params, condition)
 	if err != nil {
-		ctx.RespAutoError(err)
-		return
+		return nil, err
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) DeleteOperationChart(ctx *rest.Contexts) {
-	id := ctx.Request.PathParameter("id")
+func (s *coreService) DeleteOperationChart(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	id := pathParams("id")
 	int64ID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		blog.Errorf("delete chart fail, string convert to int64 fail, err: %v, rid: %v", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("delete chart fail, string convert to int64 fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
-	if _, err := s.core.StatisticOperation().DeleteOperationChart(ctx.Kit, int64ID); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if _, err := s.core.StatisticOperation().DeleteOperationChart(params, int64ID); err != nil {
+		return nil, err
 	}
 
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) CreateOperationChart(ctx *rest.Contexts) {
+func (s *coreService) CreateOperationChart(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	chartConfig := metadata.ChartConfig{}
-	if err := ctx.DecodeInto(&chartConfig); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(&chartConfig); err != nil {
+		blog.Errorf("create chart fail, marshal chart config fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
-	ownerID := util.GetOwnerID(ctx.Kit.Header)
+	ownerID := util.GetOwnerID(params.Header)
 	chartConfig.CreateTime.Time = time.Now()
 	chartConfig.OwnerID = ownerID
-	result, err := s.core.StatisticOperation().CreateOperationChart(ctx.Kit, chartConfig)
+	result, err := s.core.StatisticOperation().CreateOperationChart(params, chartConfig)
 	if err != nil {
-		blog.Errorf("create chart fail, err: %v, rid: %v", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("create chart fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) SearchChartWithPosition(ctx *rest.Contexts) {
-	opt := make(map[string]interface{})
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
-	}
+func (s *coreService) SearchChartWithPosition(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	opt := mapstr.MapStr{}
 
-	result, err := s.core.StatisticOperation().SearchOperationChart(ctx.Kit, opt)
+	result, err := s.core.StatisticOperation().SearchOperationChart(params, opt)
 	if err != nil {
-		blog.Errorf("search chart fail, err: %v, option: %v, rid: %v", err, opt, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("search chart fail, err: %v, option: %v, rid: %v", err, opt, params.ReqID)
+		return nil, err
 	}
 
 	if result == nil {
-		ctx.RespEntityWithCount(0, nil)
-		return
+		return struct {
+			Count uint64      `json:"count"`
+			Info  interface{} `json:"info"`
+		}{
+			Count: 0,
+			Info:  result,
+		}, err
 	}
 
-	language := util.GetLanguage(ctx.Kit.Header)
-	lang := s.language.CreateDefaultCCLanguageIf(language)
 	for index, chart := range result.Host {
-		result.Host[index].Name = s.TranslateOperationChartName(lang, chart)
+		result.Host[index].Name = s.TranslateOperationChartName(params.Lang, chart)
 	}
 	for index, chart := range result.Inst {
-		result.Inst[index].Name = s.TranslateOperationChartName(lang, chart)
+		result.Inst[index].Name = s.TranslateOperationChartName(params.Lang, chart)
 	}
 
-	count, err := s.db.Table(common.BKTableNameChartConfig).Find(opt).Count(ctx.Kit.Ctx)
+	count, err := s.db.Table(common.BKTableNameChartConfig).Find(opt).Count(params.Context)
 	if err != nil {
-		blog.Errorf("search chart fail, option: %v, err: %v, rid: %v", opt, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("search chart fail, option: %v, err: %v, rid: %v", opt, err, params.ReqID)
+		return nil, err
 	}
 
-	ctx.RespEntityWithCount(int64(count), result)
+	return struct {
+		Count uint64      `json:"count"`
+		Info  interface{} `json:"info"`
+	}{
+		Count: count,
+		Info:  result,
+	}, err
 }
 
-func (s *coreService) UpdateOperationChart(ctx *rest.Contexts) {
-	opt := make(map[string]interface{})
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
+func (s *coreService) UpdateOperationChart(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	opt := mapstr.MapStr{}
+	if err := data.MarshalJSONInto(&opt); err != nil {
+		blog.Errorf("update chart fail, marshal chart config fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
-	result, err := s.core.StatisticOperation().UpdateOperationChart(ctx.Kit, opt)
+	result, err := s.core.StatisticOperation().UpdateOperationChart(params, opt)
 	if err != nil {
-		ctx.RespAutoError(err)
-		return
+		return nil, err
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) UpdateChartPosition(ctx *rest.Contexts) {
+func (s *coreService) UpdateChartPosition(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	opt := metadata.ChartPosition{}
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(&opt); err != nil {
+		blog.Errorf("update chart position fail, marshal chart position fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
-	result, err := s.core.StatisticOperation().UpdateChartPosition(ctx.Kit, opt)
+	result, err := s.core.StatisticOperation().UpdateChartPosition(params, opt)
 	if err != nil {
-		ctx.RespAutoError(err)
-		return
+		return nil, err
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) SearchTimerChartData(ctx *rest.Contexts) {
+func (s *coreService) SearchTimerChartData(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	opt := metadata.ChartConfig{}
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(&opt); err != nil {
+		blog.Errorf("search chart data fail, marshal chart config fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
-	result, err := s.core.StatisticOperation().SearchTimerChartData(ctx.Kit, opt)
+	result, err := s.core.StatisticOperation().SearchTimerChartData(params, opt)
 	if err != nil {
-		blog.Errorf("search operation chart data fail, chartName: %v, err: %v, rid: %v", opt.Name, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("search operation chart data fail, chartName: %v, err: %v, rid: %v", opt.Name, err, params.ReqID)
+		return nil, err
 
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) SearchChartCommon(ctx *rest.Contexts) {
-	opt := make(map[string]interface{})
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
+func (s *coreService) SearchChartCommon(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	opt := mapstr.MapStr{}
+	if err := data.MarshalJSONInto(&opt); err != nil {
+		blog.Errorf(" search chart fail, marshal chart config fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
 
 	chartConfig := make([]metadata.ChartConfig, 0)
-	if err := s.db.Table(common.BKTableNameChartConfig).Find(opt).All(ctx.Kit.Ctx, &chartConfig); err != nil {
-		blog.Errorf("search chart config fail, option: %v, err: %v, rid: %v", opt, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.db.Table(common.BKTableNameChartConfig).Find(opt).All(params.Context, &chartConfig); err != nil {
+		blog.Errorf("search chart config fail, option: %v, err: %v, rid: %v", opt, err, params.ReqID)
+		return nil, err
 	}
 
-	count, err := s.db.Table(common.BKTableNameChartConfig).Find(opt).Count(ctx.Kit.Ctx)
+	count, err := s.db.Table(common.BKTableNameChartConfig).Find(opt).Count(params.Context)
 	if err != nil {
-		blog.Errorf("search chart fail, opt: %v, err: %v, rid: %v", opt, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("search chart fail, opt: %v, err: %v, rid: %v", opt, err, params.ReqID)
+		return nil, err
 	}
 
 	if len(chartConfig) > 0 {
-		ctx.RespEntityWithCount(int64(count), chartConfig[0])
-		return
+		return struct {
+			Count uint64      `json:"count"`
+			Info  interface{} `json:"info"`
+		}{
+			Count: count,
+			Info:  chartConfig[0],
+		}, err
 	}
 
-	ctx.RespEntityWithCount(int64(count), nil)
+	return struct {
+		Count uint64      `json:"count"`
+		Info  interface{} `json:"info"`
+	}{
+		Count: count,
+		Info:  nil,
+	}, err
 }
 
-func (s *coreService) TimerFreshData(ctx *rest.Contexts) {
-	exist, err := s.db.HasTable(context.Background(), common.BKTableNameChartData)
+func (s *coreService) TimerFreshData(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	exist, err := s.db.HasTable(params, common.BKTableNameChartData)
 	if err != nil {
-		blog.Errorf("TimerFreshData, update timer chart data fail, err: %v, rid: %v", err, ctx.Kit.Rid)
-		ctx.RespEntity(false)
-        return
+		blog.Errorf("TimerFreshData, update timer chart data fail, err: %v, rid: %v", err, params.ReqID)
+		return false, nil
 	}
 	if !exist {
-		ctx.RespEntity(false)
-        return
+		return false, nil
 	}
 
-	err = s.core.StatisticOperation().TimerFreshData(ctx.Kit)
+	err = s.core.StatisticOperation().TimerFreshData(params)
 	if err != nil {
-		blog.Errorf("TimerFreshData fail, err: %v, rid: %v", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-        return
+		blog.Errorf("TimerFreshData fail, err: %v, rid: %v", err, params.ReqID)
 	}
-	ctx.RespEntity(true)
+
+	return true, nil
 }
 
-func (s *coreService) SearchCloudMapping(ctx *rest.Contexts) {
-	opt := make(map[string]interface{})
-	if err := ctx.DecodeInto(&opt); err != nil {
-		ctx.RespAutoError(err)
-		return
-	}
+func (s *coreService) SearchCloudMapping(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	opt := mapstr.MapStr{}
 
 	respData := new(metadata.CloudMapping)
-	if err := s.db.Table(common.BKTableNameChartConfig).Find(opt).All(ctx.Kit.Ctx, respData); err != nil {
-		blog.Errorf("search cloud mapping fail, err: %v, rid: %v", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.db.Table(common.BKTableNameChartConfig).Find(opt).All(params.Context, respData); err != nil {
+		blog.Errorf("search cloud mapping fail, err: %v, rid: %v", err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(respData)
+
+	return respData, nil
 }

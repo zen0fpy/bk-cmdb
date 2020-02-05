@@ -31,6 +31,7 @@
 <script>
     import cloneToSource from './children/clone-to-source.vue'
     import cloneToOther from './children/clone-to-other.vue'
+    import { MENU_BUSINESS_HOST_AND_SERVICE } from '@/dictionary/menu-symbol'
     export default {
         components: {
             [cloneToSource.name]: cloneToSource,
@@ -63,6 +64,17 @@
         },
         async created () {
             try {
+                this.$store.commit('setBreadcrumbs', [{
+                    label: this.$t('服务拓扑'),
+                    route: {
+                        name: MENU_BUSINESS_HOST_AND_SERVICE,
+                        query: {
+                            node: 'module-' + this.$route.params.moduleId
+                        }
+                    }
+                }, {
+                    label: this.$route.query.title
+                }])
                 const [module, processes] = await Promise.all([
                     this.getModuleInstance(),
                     this.getServiceInstanceProcesses()
@@ -107,7 +119,7 @@
 
 <style lang="scss" scoped>
     .clone-layout {
-        padding: 15px 20px 28px;
+        padding: 10px 20px 28px;
         font-size: 14px;
     }
     .host-type {

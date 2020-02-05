@@ -26,11 +26,6 @@
         },
         created () {
             this.localValue = this.value
-        },
-        methods: {
-            focus () {
-                this.$el.querySelector('input').focus()
-            }
         }
     }
 </script>

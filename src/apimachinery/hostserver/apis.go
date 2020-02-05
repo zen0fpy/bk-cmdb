@@ -14,6 +14,7 @@ package hostserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/metadata"
@@ -27,7 +28,7 @@ func (hs *hostServer) DeleteHostBatch(ctx context.Context, h http.Header, dat in
 	err = hs.client.Delete().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -35,13 +36,13 @@ func (hs *hostServer) DeleteHostBatch(ctx context.Context, h http.Header, dat in
 }
 
 func (hs *hostServer) GetHostInstanceProperties(ctx context.Context, ownerID string, hostID string, h http.Header) (resp *metadata.HostInstancePropertiesResult, err error) {
-	subPath := "/hosts/%s/%s"
+	subPath := fmt.Sprintf("/hosts/%s/%s", ownerID, hostID)
 
 	resp = new(metadata.HostInstancePropertiesResult)
 	err = hs.client.Get().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, ownerID, hostID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -49,12 +50,12 @@ func (hs *hostServer) GetHostInstanceProperties(ctx context.Context, ownerID str
 }
 
 func (hs *hostServer) HostSnapInfo(ctx context.Context, hostID string, h http.Header, dat interface{}) (resp *metadata.HostSnapResult, err error) {
-	subPath := "/hosts/snapshot/%s"
+	subPath := fmt.Sprintf("/hosts/snapshot/%s", hostID)
 
 	err = hs.client.Get().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath, hostID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -68,7 +69,7 @@ func (hs *hostServer) AddHost(ctx context.Context, h http.Header, dat interface{
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -82,7 +83,7 @@ func (hs *hostServer) AddHostFromAgent(ctx context.Context, h http.Header, dat i
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -96,7 +97,7 @@ func (hs *hostServer) SyncHost(ctx context.Context, h http.Header, data interfac
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -110,7 +111,7 @@ func (hs *hostServer) GetHostFavourites(ctx context.Context, h http.Header, dat 
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -124,7 +125,7 @@ func (hs *hostServer) AddHostFavourite(ctx context.Context, h http.Header, dat *
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -133,12 +134,12 @@ func (hs *hostServer) AddHostFavourite(ctx context.Context, h http.Header, dat *
 
 func (hs *hostServer) UpdateHostFavouriteByID(ctx context.Context, id string, h http.Header, data *metadata.FavouriteParms) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "hosts/favorites/%s"
+	subPath := fmt.Sprintf("hosts/favorites/%s", id)
 
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -147,12 +148,12 @@ func (hs *hostServer) UpdateHostFavouriteByID(ctx context.Context, id string, h 
 
 func (hs *hostServer) DeleteHostFavouriteByID(ctx context.Context, id string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "hosts/favorites/%s"
+	subPath := fmt.Sprintf("hosts/favorites/%s", id)
 
 	err = hs.client.Delete().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -161,12 +162,12 @@ func (hs *hostServer) DeleteHostFavouriteByID(ctx context.Context, id string, h 
 
 func (hs *hostServer) IncrHostFavouritesCount(ctx context.Context, id string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/hosts/favorites/%s/incr"
+	subPath := fmt.Sprintf("/hosts/favorites/%s/incr", id)
 
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -180,7 +181,7 @@ func (hs *hostServer) AddHistory(ctx context.Context, h http.Header, dat map[str
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -189,12 +190,12 @@ func (hs *hostServer) AddHistory(ctx context.Context, h http.Header, dat map[str
 
 func (hs *hostServer) GetHistorys(ctx context.Context, start string, limit string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/hosts/history/%s/%s"
+	subPath := fmt.Sprintf("/hosts/history/%s/%s", start, limit)
 
 	err = hs.client.Get().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, start, limit).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -208,7 +209,7 @@ func (hs *hostServer) AddHostMultiAppModuleRelation(ctx context.Context, h http.
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -222,7 +223,7 @@ func (hs *hostServer) HostModuleRelation(ctx context.Context, h http.Header, par
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -236,7 +237,7 @@ func (hs *hostServer) MoveHost2EmptyModule(ctx context.Context, h http.Header, d
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -250,7 +251,7 @@ func (hs *hostServer) MoveHost2FaultModule(ctx context.Context, h http.Header, d
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -264,7 +265,7 @@ func (hs *hostServer) MoveHostToResourcePool(ctx context.Context, h http.Header,
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -278,7 +279,7 @@ func (hs *hostServer) AssignHostToApp(ctx context.Context, h http.Header, dat *m
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -292,7 +293,7 @@ func (hs *hostServer) AssignHostToAppModule(ctx context.Context, h http.Header, 
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -306,7 +307,7 @@ func (hs *hostServer) SaveUserCustom(ctx context.Context, h http.Header, dat int
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -320,7 +321,7 @@ func (hs *hostServer) GetUserCustom(ctx context.Context, h http.Header) (resp *m
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -334,7 +335,7 @@ func (hs *hostServer) GetDefaultCustom(ctx context.Context, h http.Header) (resp
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -348,7 +349,7 @@ func (hs *hostServer) CloneHostProperty(ctx context.Context, h http.Header, dat 
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -362,7 +363,7 @@ func (hs *hostServer) MoveSetHost2IdleModule(ctx context.Context, h http.Header,
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -376,7 +377,7 @@ func (hs *hostServer) SearchHost(ctx context.Context, h http.Header, dat *params
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -390,7 +391,7 @@ func (hs *hostServer) SearchHostWithAsstDetail(ctx context.Context, h http.Heade
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -404,7 +405,7 @@ func (hs *hostServer) UpdateHostBatch(ctx context.Context, h http.Header, dat in
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -418,7 +419,7 @@ func (hs *hostServer) UpdateHostPropertyBatch(ctx context.Context, h http.Header
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -432,7 +433,7 @@ func (hs *hostServer) AddUserCustomQuery(ctx context.Context, h http.Header, dat
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -441,12 +442,12 @@ func (hs *hostServer) AddUserCustomQuery(ctx context.Context, h http.Header, dat
 
 func (hs *hostServer) UpdateUserCustomQuery(ctx context.Context, businessID string, id string, h http.Header, dat map[string]interface{}) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/userapi/%s/%s"
+	subPath := fmt.Sprintf("/userapi/%s/%s", businessID, id)
 
 	err = hs.client.Put().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath, businessID, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -455,12 +456,12 @@ func (hs *hostServer) UpdateUserCustomQuery(ctx context.Context, businessID stri
 
 func (hs *hostServer) DeleteUserCustomQuery(ctx context.Context, businessID string, id string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/userapi/%s/%s"
+	subPath := fmt.Sprintf("/userapi/%s/%s", businessID, id)
 
 	err = hs.client.Delete().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, businessID, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -469,12 +470,12 @@ func (hs *hostServer) DeleteUserCustomQuery(ctx context.Context, businessID stri
 
 func (hs *hostServer) GetUserCustomQuery(ctx context.Context, businessID string, h http.Header, dat *metadata.QueryInput) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/userapi/search/%s"
+	subPath := fmt.Sprintf("/userapi/search/%s", businessID)
 
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath, businessID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -483,12 +484,12 @@ func (hs *hostServer) GetUserCustomQuery(ctx context.Context, businessID string,
 
 func (hs *hostServer) GetUserCustomQueryDetail(ctx context.Context, businessID string, id string, h http.Header) (resp *metadata.UserCustomQueryDetailResult, err error) {
 	resp = new(metadata.UserCustomQueryDetailResult)
-	subPath := "/userapi/detail/%s/%s"
+	subPath := fmt.Sprintf("/userapi/detail/%s/%s", businessID, id)
 
 	err = hs.client.Get().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, businessID, id).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -497,12 +498,12 @@ func (hs *hostServer) GetUserCustomQueryDetail(ctx context.Context, businessID s
 
 func (hs *hostServer) GetUserCustomQueryResult(ctx context.Context, businessID, id, start, limit string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/userapi/data/%s/%s/%s/%s"
+	subPath := fmt.Sprintf("/userapi/data/%s/%s/%s/%s", businessID, id, start, limit)
 
 	err = hs.client.Get().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, businessID, id, start, limit).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -512,12 +513,12 @@ func (hs *hostServer) GetUserCustomQueryResult(ctx context.Context, businessID, 
 func (hs *hostServer) HostSearch(ctx context.Context, h http.Header, params *metadata.HostCommonSearch) (resp *metadata.QueryInstResult, err error) {
 
 	resp = new(metadata.QueryInstResult)
-	subPath := "hosts/search"
+	subPath := fmt.Sprintf("hosts/search")
 
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -527,12 +528,12 @@ func (hs *hostServer) HostSearch(ctx context.Context, h http.Header, params *met
 func (hs *hostServer) ListBizHostsTopo(ctx context.Context, h http.Header, bizID int64, params *metadata.ListHostsWithNoBizParameter) (resp *metadata.SuccessResponse, err error) {
 
 	resp = new(metadata.SuccessResponse)
-	subPath := "/hosts/app/%d/list_hosts_topo"
+	subPath := fmt.Sprintf("/hosts/app/%d/list_hosts_topo", bizID)
 
 	err = hs.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)

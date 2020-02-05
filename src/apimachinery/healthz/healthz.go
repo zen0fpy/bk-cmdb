@@ -74,7 +74,7 @@ func (h *health) HealthCheck(moduleName string) (healthy bool, err error) {
 	client := rest.NewRESTClient(h.capability, "/")
 	err = client.Get().
 		WithContext(context.Background()).
-		SubResourcef("/healthz").
+		SubResource("/healthz").
 		Body(nil).
 		Do().
 		Into(resp)

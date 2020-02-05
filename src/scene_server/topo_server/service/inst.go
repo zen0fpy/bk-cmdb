@@ -589,9 +589,9 @@ func (s *Service) SearchInstAssociation(params types.ContextParams, pathParams, 
 	condOR.Item(map[string]interface{}{common.BKAsstObjIDField: objID, common.BKAsstInstIDField: instID})
 	input := &metadata.QueryCondition{
 		Condition: cond.ToMapStr(),
-		Page: metadata.BasePage{
-			Limit: int(limit),
-			Start: int(start),
+		Limit: metadata.SearchLimit{
+			Limit:  limit,
+			Offset: start,
 		},
 	}
 
@@ -610,7 +610,7 @@ func (s *Service) SearchInstAssociation(params types.ContextParams, pathParams, 
 	return map[string]interface{}{
 		"info":  infos,
 		"count": cnt,
-		"page":  input.Page,
+		"page":  input.Limit,
 	}, err
 }
 
@@ -636,9 +636,9 @@ func (s *Service) SearchInstAssociationUI(params types.ContextParams, pathParams
 	condOR.Item(map[string]interface{}{common.BKAsstObjIDField: objID, common.BKAsstInstIDField: instID})
 	input := &metadata.QueryCondition{
 		Condition: cond.ToMapStr(),
-		Page: metadata.BasePage{
-			Limit: int(limit),
-			Start: int(start),
+		Limit: metadata.SearchLimit{
+			Limit:  limit,
+			Offset: start,
 		},
 	}
 
@@ -657,7 +657,7 @@ func (s *Service) SearchInstAssociationUI(params types.ContextParams, pathParams
 	return map[string]interface{}{
 		"data":              infos,
 		"association_count": cnt,
-		"page":              input.Page,
+		"page":              input.Limit,
 	}, err
 }
 
@@ -693,9 +693,14 @@ func (s *Service) SearchInstAssociationWithOtherObject(params types.ContextParam
 		cond.Field(common.BKAsstObjIDField).Eq(reqParams.Condition.AssociationObjectID)
 	}
 
+	sortArr := metadata.NewSearchSortParse().String(reqParams.Page.Sort).ToSearchSortArr()
 	input := &metadata.QueryCondition{
 		Condition: cond.ToMapStr(),
-		Page:      reqParams.Page,
+		Limit: metadata.SearchLimit{
+			Limit:  int64(reqParams.Page.Limit),
+			Offset: int64(reqParams.Page.Start),
+		},
+		SortArr: sortArr,
 	}
 
 	if input.IsIllegal() {
@@ -713,6 +718,6 @@ func (s *Service) SearchInstAssociationWithOtherObject(params types.ContextParam
 	return map[string]interface{}{
 		"info":  infos,
 		"count": cnt,
-		"page":  input.Page,
+		"page":  input.Limit,
 	}, err
 }

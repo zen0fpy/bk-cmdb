@@ -15,6 +15,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"configcenter/src/auth"
@@ -24,6 +25,7 @@ import (
 	"configcenter/src/common/backbone"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/types"
+	"configcenter/src/common/version"
 	"configcenter/src/scene_server/proc_server/app/options"
 	"configcenter/src/scene_server/proc_server/logics"
 	"configcenter/src/scene_server/proc_server/service"
@@ -33,14 +35,14 @@ import (
 
 func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOption) error {
 
-	svrInfo, err := types.NewServerInfo(op.ServConf)
+	svrInfo, err := newServerInfo(op)
 	if err != nil {
 		blog.Errorf("fail to new server information. err: %s", err.Error())
 		return fmt.Errorf("make server information failed, err:%v", err)
 	}
 
 	procSvr := new(service.ProcServer)
-	procSvr.EsbConfigChn = make(chan esbutil.EsbConfig)
+	procSvr.EsbConfigChn = make(chan esbutil.EsbConfig, 0)
 
 	input := &backbone.BackboneParameter{
 		ConfigUpdate: procSvr.OnProcessConfigUpdate,
@@ -61,9 +63,17 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 			break
 		}
 	}
-	if !configReady {
+	if false == configReady {
 		return fmt.Errorf("configuration item not found")
 	}
+
+	// transaction client
+	txn, err := procSvr.Config.Mongo.GetTransactionClient(engine)
+	if err != nil {
+		blog.Errorf("new transaction client failed, err: %+v", err)
+		return fmt.Errorf("new transaction client failed, err: %+v", err)
+	}
+	procSvr.TransactionClient = txn
 
 	authConf, err := authcenter.ParseConfigFromKV("auth", procSvr.ConfigMap)
 	if err != nil {
@@ -97,4 +107,32 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	}
 
 	return nil
+}
+
+func newServerInfo(op *options.ServerOption) (*types.ServerInfo, error) {
+	ip, err := op.ServConf.GetAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := op.ServConf.GetPort()
+	if err != nil {
+		return nil, err
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	svrInfo := &types.ServerInfo{
+		IP:       ip,
+		Port:     port,
+		HostName: hostname,
+		Scheme:   "http",
+		Version:  version.GetVersion(),
+		Pid:      os.Getpid(),
+	}
+
+	return svrInfo, nil
 }

@@ -15,8 +15,8 @@ package user
 import (
 	"encoding/json"
 	"net/http"
+	"plugin"
 	"strconv"
-	"strings"
 
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
@@ -35,6 +35,7 @@ type publicUser struct {
 	config   options.Config
 	engine   *backbone.Engine
 	cacheCli *redis.Client
+	loginPlg *plugin.Plugin
 }
 
 // LoginUser  user login
@@ -49,8 +50,17 @@ func (m *publicUser) LoginUser(c *gin.Context) bool {
 		isMultiOwner = true
 	}
 
-	user := plugins.CurrentPlugin(c, m.config.LoginVersion)
-	userInfo, loginSuccess = user.LoginUser(c, m.config.ConfigMap, isMultiOwner)
+	if m.loginPlg != nil {
+		loginUserFunc, err := m.loginPlg.Lookup("LoginUser")
+		if err != nil {
+			blog.Errorf("look login func error, rid: %s", rid)
+			return false
+		}
+		userInfo, loginSuccess = loginUserFunc.(func(c *gin.Context, config map[string]string, isMultiOwner bool) (user *metadata.LoginUserInfo, loginSuccess bool))(c, m.config.ConfigMap, isMultiOwner)
+	} else {
+		user := plugins.CurrentPlugin(c, m.config.LoginVersion)
+		userInfo, loginSuccess = user.LoginUser(c, m.config.ConfigMap, isMultiOwner)
+	}
 
 	if !loginSuccess {
 		blog.Infof("login user with plugin failed, rid: %s", rid)
@@ -103,26 +113,35 @@ func (m *publicUser) GetUserList(c *gin.Context) (int, interface{}) {
 	var userList []*metadata.LoginSystemUserInfo
 	rspBody := metadata.LonginSystemUserListResult{}
 	rspBody.Result = true
-	query := c.Request.URL.Query()
-	params := make(map[string]string)
-	for key, values := range query {
-		params[key] = strings.Join(values, ";")
+	httpStatus := http.StatusOK
+	if nil == m.loginPlg {
+		user := plugins.CurrentPlugin(c, m.config.LoginVersion)
+		userList, err = user.GetUserList(c, m.config.ConfigMap)
+	} else {
+		getUserListFunc, err := m.loginPlg.Lookup("GetUserList")
+		if nil != err {
+			blog.Error("GetUserList interface not implemented, rid: %s", rid)
+			rspBody.Code = common.CCErrCommHTTPDoRequestFailed
+			rspBody.ErrMsg = err.Error()
+
+			return http.StatusInternalServerError, rspBody
+		}
+		userList, err = getUserListFunc.(func(c *gin.Context, config map[string]string) ([]*metadata.LoginSystemUserInfo, error))(c, m.config.ConfigMap)
 	}
-	user := plugins.CurrentPlugin(c, m.config.LoginVersion)
-	userList, err = user.GetUserList(c, m.config.ConfigMap, params)
 	if nil != err {
 		blog.Error("GetUserList failed, err: %+v, rid: %s", err, rid)
 		rspBody.Code = common.CCErrCommHTTPDoRequestFailed
 		rspBody.ErrMsg = err.Error()
 		rspBody.Result = false
-		return http.StatusInternalServerError, rspBody
+		httpStatus = http.StatusInternalServerError
 	}
 	rspBody.Result = true
 	rspBody.Data = userList
-	return http.StatusOK, rspBody
+	return httpStatus, rspBody
 }
 
 func (m *publicUser) GetLoginUrl(c *gin.Context) string {
+	rid := util.GetHTTPCCRequestID(c.Request.Header)
 
 	params := new(metadata.LogoutRequestParams)
 	err := json.NewDecoder(c.Request.Body).Decode(params)
@@ -133,49 +152,20 @@ func (m *publicUser) GetLoginUrl(c *gin.Context) string {
 		}
 	}
 
-	user := plugins.CurrentPlugin(c, m.config.LoginVersion)
-	return user.GetLoginUrl(c, m.config.ConfigMap, params)
+	if nil == m.loginPlg {
+		user := plugins.CurrentPlugin(c, m.config.LoginVersion)
+		return user.GetLoginUrl(c, m.config.ConfigMap, params)
+	} else {
 
-}
+		getLoginUrlFunc, err := m.loginPlg.Lookup("GetLoginUrl")
 
-// GetDepartment get department info from PaaS
-func (m *publicUser) GetDepartment(c *gin.Context) (int, interface{}) {
-	rid := util.GetHTTPCCRequestID(c.Request.Header)
-	var err error
-	var departments *metadata.DepartmentData
-	rspBody := metadata.DepartmentResult{}
-	rspBody.Result = true
-	user := plugins.CurrentPlugin(c, m.config.LoginVersion)
-	departments, err = user.GetDepartment(c, m.config.ConfigMap)
-	if nil != err {
-		blog.Error("GetDepartment failed, err: %+v, rid: %s", err, rid)
-		rspBody.Code = common.CCErrCommHTTPDoRequestFailed
-		rspBody.ErrMsg = err.Error()
-		rspBody.Result = false
-		return http.StatusInternalServerError, rspBody
+		if nil != err {
+			blog.Errorf("look get url func error, rid: %s", rid)
+			return ""
+
+		}
+		return getLoginUrlFunc.(func(c *gin.Context, config map[string]string, input *metadata.LogoutRequestParams) string)(c, m.config.ConfigMap, params)
+
 	}
-	rspBody.Result = true
-	rspBody.Data = departments
-	return http.StatusOK, rspBody
-}
 
-// GetDepartmentProfile get department profile from PaaS
-func (m *publicUser) GetDepartmentProfile(c *gin.Context) (int, interface{}) {
-	rid := util.GetHTTPCCRequestID(c.Request.Header)
-	var err error
-	var departmentprofile *metadata.DepartmentProfileData
-	rspBody := metadata.DepartmentProfileResult{}
-	rspBody.Result = true
-	user := plugins.CurrentPlugin(c, m.config.LoginVersion)
-	departmentprofile, err = user.GetDepartmentProfile(c, m.config.ConfigMap)
-	if nil != err {
-		blog.Error("GetDepartmentProfile failed, err: %+v, rid: %s", err, rid)
-		rspBody.Code = common.CCErrCommHTTPDoRequestFailed
-		rspBody.ErrMsg = err.Error()
-		rspBody.Result = false
-		return http.StatusInternalServerError, rspBody
-	}
-	rspBody.Result = true
-	rspBody.Data = departmentprofile
-	return http.StatusOK, rspBody
 }

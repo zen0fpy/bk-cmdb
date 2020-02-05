@@ -10,7 +10,7 @@
                 :label="column.name">
                 <template slot-scope="{ row }">
                     <span v-if="column.id === 'bind_ip'">{{row[column.id] | ipText}}</span>
-                    <span v-else>{{row[column.id] | formatter('singlechar')}}</span>
+                    <span v-else>{{row[column.id] || '--'}}</span>
                 </template>
             </bk-table-column>
             <bk-table-column :label="$t('操作')" prop="operation" v-if="$parent.isFormMode">
@@ -21,7 +21,7 @@
                             theme="primary"
                             :disabled="disabled"
                             :text="true"
-                            @click.stop="handleEdit(row._original_)">
+                            @click.stop="handleEdite(row['originData'])">
                             {{$t('编辑')}}
                         </bk-button>
                     </cmdb-auth>
@@ -30,7 +30,7 @@
                             theme="primary"
                             :disabled="disabled"
                             :text="true"
-                            @click.stop="handleDelete(row._original_)">
+                            @click.stop="handleDelete(row['originData'])">
                             {{$t('删除')}}
                         </bk-button>
                     </cmdb-auth>
@@ -108,7 +108,7 @@
         },
         computed: {
             showList () {
-                const list = this.list.map(template => {
+                let list = this.list.map(template => {
                     const result = {}
                     Object.keys(template).map(key => {
                         const type = typeof template[key]
@@ -118,15 +118,15 @@
                             result[key] = template[key]
                         }
                     })
-                    result._original_ = template
+                    result['originData'] = template
                     return result
                 })
-                list.sort((prev, next) => prev.process_id - next.process_id)
+                list = this.$tools.flattenList(this.properties, list).sort((prev, next) => prev.process_id - next.process_id)
                 return list
             }
         },
         methods: {
-            handleEdit (process) {
+            handleEdite (process) {
                 this.$emit('on-edit', process)
             },
             handleDelete (process) {

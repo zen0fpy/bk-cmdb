@@ -26,17 +26,17 @@ func CurrentPlugin(c *gin.Context, version string) metadata.LoginUserPluginInerf
 		version = common.BKDefaultLoginUserPluginVersion
 	}
 
-	var defaultPlugin *metadata.LoginPluginInfo
+	var selfPlugin *metadata.LoginPluginInfo
 	for _, plugin := range manager.LoginPluginInfo {
 		if plugin.Version == version {
 			return plugin.HandleFunc
 		}
 		if common.BKDefaultLoginUserPluginVersion == plugin.Version {
-			defaultPlugin = plugin
+			selfPlugin = plugin
 		}
 	}
-	if nil != defaultPlugin {
-		return defaultPlugin.HandleFunc
+	if nil != selfPlugin {
+		return selfPlugin.HandleFunc
 	}
 
 	return nil

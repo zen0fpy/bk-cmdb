@@ -15,7 +15,7 @@
             </textarea>
             <i class="bk-icon icon-close"
                 :class="{
-                    'is-show': isFocus
+                    'is-show': focus
                 }"
                 v-if="localValue.length"
                 @click="handleClear">
@@ -50,7 +50,7 @@
                 localValue: this.value,
                 rows: 1,
                 timer: null,
-                isFocus: false
+                focus: false
             }
         },
         watch: {
@@ -59,7 +59,7 @@
             }
         },
         created () {
-            if (this.isFocus) {
+            if (this.focus) {
                 this.setRows()
             }
         },
@@ -87,10 +87,10 @@
             },
             handleFocus () {
                 this.setRows()
-                this.isFocus = true
+                this.focus = true
             },
             handleBlur () {
-                this.isFocus = false
+                this.focus = false
                 this.timer = setTimeout(() => {
                     this.rows = 1
                     if (this.$refs.textarea) {
@@ -106,9 +106,6 @@
                 this.$nextTick(() => {
                     this.setRows()
                 })
-            },
-            focus () {
-                this.$refs.textarea.focus()
             }
         }
     }
@@ -136,12 +133,6 @@
                 resize: none;
                 font-size: 14px;
                 @include scrollbar-y;
-                &:disabled {
-                    color: #c4c6cc;
-                    background-color: #fafbfd!important;
-                    cursor: not-allowed;
-                    border-color: #dcdee5!important;
-                }
             }
             .icon-close {
                 display: none;

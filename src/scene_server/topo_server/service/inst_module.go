@@ -104,7 +104,7 @@ func (s *Service) CreateModule(params types.ContextParams, pathParams, queryPara
 func (s *Service) CheckIsBuiltInModule(params types.ContextParams, moduleIDs ...int64) errors.CCErrorCoder {
 	// 检查是否时内置集群
 	qc := &metadata.QueryCondition{
-		Page: metadata.BasePage{
+		Limit: metadata.SearchLimit{
 			Limit: 0,
 		},
 		Condition: map[string]interface{}{
@@ -255,11 +255,13 @@ func (s *Service) ListModulesByServiceTemplateID(params types.ContextParams, pat
 		return nil, params.Err.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	start := 0
-	limit := common.BKDefaultLimit
+	start := int64(0)
+	limit := int64(common.BKDefaultLimit)
+	sortArr := make([]metadata.SearchSort, 0)
 	if requestBody.Page != nil {
-		limit = requestBody.Page.Limit
-		start = requestBody.Page.Start
+		limit = int64(requestBody.Page.Limit)
+		start = int64(requestBody.Page.Start)
+		sortArr = requestBody.Page.ToSearchSort()
 	}
 	filter := map[string]interface{}{
 		common.BKServiceTemplateIDField: serviceTemplateID,
@@ -271,11 +273,11 @@ func (s *Service) ListModulesByServiceTemplateID(params types.ContextParams, pat
 		}
 	}
 	qc := &metadata.QueryCondition{
-		Page: metadata.BasePage{
-			Start: start,
-			Limit: limit,
-			Sort:  requestBody.Page.Sort,
+		Limit: metadata.SearchLimit{
+			Offset: start,
+			Limit:  limit,
 		},
+		SortArr:   sortArr,
 		Condition: filter,
 	}
 	instanceResult, err := s.Engine.CoreAPI.CoreService().Instance().ReadInstance(params.Context, params.Header, common.BKInnerObjIDModule, qc)
@@ -391,10 +393,8 @@ func (s *Service) SearchRuleRelatedTopoNodes(params types.ContextParams, pathPar
 				return false
 			}
 			// case-insensitive contains
-			if r.Operator == querybuilder.OperatorContains {
-				if util.CaseInsensitiveContains(node.InstanceName, valueStr) {
-					return true
-				}
+			if util.CaseInsensitiveContains(node.InstanceName, valueStr) {
+				return true
 			}
 			return false
 		})

@@ -17,269 +17,181 @@ import (
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/mapstruct"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) CreateHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) CreateHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.CreateHostApplyRuleOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("CreateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("CreateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.HostApplyRuleOperation().CreateHostApplyRule(ctx.Kit, bizID, option)
+	result, err := s.core.HostApplyRuleOperation().CreateHostApplyRule(params, bizID, option)
 	if err != nil {
-		blog.Errorf("CreateHostApplyRule failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("CreateHostApplyRule failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) UpdateHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) UpdateHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	ruleIDStr := ctx.Request.PathParameter(common.HostApplyRuleIDField)
+	ruleIDStr := pathParams(common.HostApplyRuleIDField)
 	ruleID, err := strconv.ParseInt(ruleIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.HostApplyRuleIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.HostApplyRuleIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.UpdateHostApplyRuleOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("UpdateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("UpdateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.HostApplyRuleOperation().UpdateHostApplyRule(ctx.Kit, bizID, ruleID, option)
+	result, err := s.core.HostApplyRuleOperation().UpdateHostApplyRule(params, bizID, ruleID, option)
 	if err != nil {
-		blog.Errorf("UpdateHostApplyRule failed, ruleID: %d, option: %+v, err: %+v, rid: %s", ruleID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("UpdateHostApplyRule failed, ruleID: %d, option: %+v, err: %+v, rid: %s", ruleID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) DeleteHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) DeleteHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.DeleteHostApplyRuleOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("DeleteHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("DeleteHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	if err := s.core.HostApplyRuleOperation().DeleteHostApplyRule(ctx.Kit, bizID, option.RuleIDs...); err != nil {
-		blog.Errorf("DeleteHostApplyRule failed, bizID: %d, ruleID: %d, err: %+v, rid: %s", bizID, option.RuleIDs, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.core.HostApplyRuleOperation().DeleteHostApplyRule(params, bizID, option.RuleIDs...); err != nil {
+		blog.Errorf("DeleteHostApplyRule failed, bizID: %d, ruleID: %d, err: %+v, rid: %s", bizID, option.RuleIDs, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) GetHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) GetHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	hostApplyRuleIDStr := ctx.Request.PathParameter(common.HostApplyRuleIDField)
+	hostApplyRuleIDStr := pathParams(common.HostApplyRuleIDField)
 	hostApplyRuleID, err := strconv.ParseInt(hostApplyRuleIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.HostApplyRuleIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.HostApplyRuleIDField)
 	}
 
-	rule, err := s.core.HostApplyRuleOperation().GetHostApplyRule(ctx.Kit, bizID, hostApplyRuleID)
+	rule, err := s.core.HostApplyRuleOperation().GetHostApplyRule(params, bizID, hostApplyRuleID)
 	if err != nil {
-		blog.Errorf("GetHostApplyRule failed, bizID: %d, ruleID: %d, err: %+v, rid: %s", bizID, hostApplyRuleID, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("GetHostApplyRule failed, bizID: %d, ruleID: %d, err: %+v, rid: %s", bizID, hostApplyRuleID, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(rule)
+	return rule, nil
 }
 
-func (s *coreService) ListHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.ListHostApplyRuleOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("ListHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("ListHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	hostApplyRuleResult, err := s.core.HostApplyRuleOperation().ListHostApplyRule(ctx.Kit, bizID, option)
+	hostApplyRuleResult, err := s.core.HostApplyRuleOperation().ListHostApplyRule(params, bizID, option)
 	if err != nil {
-		blog.Errorf("ListHostApplyRule failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListHostApplyRule failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(hostApplyRuleResult)
+	return hostApplyRuleResult, nil
 }
 
-func (s *coreService) GenerateApplyPlan(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) GenerateApplyPlan(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.HostApplyPlanOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("GenerateApplyPlan failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("GenerateApplyPlan failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	applyPlans, err := s.core.HostApplyRuleOperation().GenerateApplyPlan(ctx.Kit, bizID, option)
+	applyPlans, err := s.core.HostApplyRuleOperation().GenerateApplyPlan(params, bizID, option)
 	if err != nil {
-		blog.Errorf("GenerateApplyPlan failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("GenerateApplyPlan failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(applyPlans)
+	return applyPlans, nil
 }
 
-func (s *coreService) SearchRuleRelatedModules(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) SearchRuleRelatedModules(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.SearchRuleRelatedModulesOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("SearchRuleRelatedModules failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("SearchRuleRelatedModules failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	modules, err := s.core.HostApplyRuleOperation().SearchRuleRelatedModules(ctx.Kit, bizID, option)
+	modules, err := s.core.HostApplyRuleOperation().SearchRuleRelatedModules(params, bizID, option)
 	if err != nil {
-		blog.Errorf("SearchRuleRelatedModules failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("SearchRuleRelatedModules failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(modules)
+	return modules, nil
 }
 
-func (s *coreService) BatchUpdateHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) BatchUpdateHostApplyRule(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.BatchCreateOrUpdateApplyRuleOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("BatchUpdateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("BatchUpdateHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.HostApplyRuleOperation().BatchUpdateHostApplyRule(ctx.Kit, bizID, option)
+	result, err := s.core.HostApplyRuleOperation().BatchUpdateHostApplyRule(params, bizID, option)
 	if err != nil {
-		blog.Errorf("BatchUpdateHostApplyRule failed, option: %+v, err: %+v, rid: %s", option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("BatchUpdateHostApplyRule failed, option: %+v, err: %+v, rid: %s", option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
-}
-
-func (s *coreService) UpdateHostByHostApplyRule(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
-	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
-	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
-	}
-
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
-	option := metadata.UpdateHostByHostApplyRuleOption{}
-	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("UpdateHostByHostApplyRule failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
-	}
-
-	result, err := s.core.HostApplyRuleOperation().RunHostApplyOnHosts(ctx.Kit, bizID, option)
-	if err != nil {
-		blog.Errorf("UpdateHostByHostApplyRule failed, RunHostApplyOnHosts failed, option: %+v, err: %+v, rid: %s", option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
-	}
-	ctx.RespEntity(result)
+	return result, nil
 }

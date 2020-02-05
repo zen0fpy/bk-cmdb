@@ -34,16 +34,17 @@ type SearchSort struct {
 // QueryCondition the common query condition definition
 type QueryCondition struct {
 	Fields    []string      `json:"fields"`
-	Page      BasePage      `json:"page"`
+	Limit     SearchLimit   `json:"limit"`
+	SortArr   []SearchSort  `json:"sort"`
 	Condition mapstr.MapStr `json:"condition"`
 }
 
 // IsIllegal  limit is illegal, if limit = 0; change to default page size
 func (qc *QueryCondition) IsIllegal() bool {
-	if qc.Page.Limit == 0 {
-		qc.Page.Limit = common.BKDefaultLimit
+	if qc.Limit.Limit == 0 {
+		qc.Limit.Limit = common.BKDefaultLimit
 	}
-	if qc.Page.Limit > common.BKMaxPageSize && qc.Page.Limit != common.BKNoLimit {
+	if qc.Limit.Limit > common.BKMaxPageSize && qc.Limit.Limit != common.BKNoLimit {
 		return true
 	}
 	return false

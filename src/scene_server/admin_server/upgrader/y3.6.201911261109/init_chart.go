@@ -14,7 +14,6 @@ package y3_6_201911261109
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"configcenter/src/common"
@@ -26,32 +25,27 @@ import (
 func initInnerChart(ctx context.Context, db dal.RDB, conf *upgrader.Config) error {
 	idArr := make([]uint64, 0)
 	for _, chart := range metadata.InnerChartsArr {
-		configID, err := db.NextSequence(ctx, common.BKTableNameChartConfig)
-		if err != nil {
-			return fmt.Errorf("NextSequence failed, tableName: %s, err: %+v", common.BKTableNameChartConfig, err)
-		}
-
+		configID, err := db.NextSequence(ctx, common.BKTableNameCloudTask)
 		idArr = append(idArr, configID)
+		if err != nil {
+			return err
+		}
 		innerChart := metadata.InnerChartsMap[chart]
 		innerChart.ConfigID = configID
 		innerChart.CreateTime.Time = time.Now()
 		innerChart.OwnerID = conf.OwnerID
 		if err := db.Table(common.BKTableNameChartConfig).Insert(ctx, innerChart); err != nil {
-			return fmt.Errorf("insert chart config failed, tableName: %s, chart: %+v, err: %+v", common.BKTableNameChartConfig, innerChart, err)
+			return err
 		}
 	}
 
-	position := metadata.ChartPosition{
-		BizID: 0,
-		Position: metadata.PositionInfo{
-			Host: idArr[2:6],
-			Inst: idArr[6:],
-		},
-		OwnerID: "0",
-	}
+	position := metadata.ChartPosition{}
+	position.Position.Host = idArr[2:6]
+	position.Position.Inst = idArr[6:]
+	position.OwnerID = "0"
 
 	if err := db.Table(common.BKTableNameChartPosition).Insert(ctx, position); err != nil {
-		return fmt.Errorf("insert cahrt position data failed, table: %s, position: %+v, err: %s", common.BKTableNameChartPosition, position, err)
+		return err
 	}
 
 	return nil

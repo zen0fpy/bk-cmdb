@@ -39,16 +39,15 @@
                         :name="option.name">
                     </bk-option>
                 </bk-select>
-                <component class="filter-value fl"
-                    v-if="['enum', 'list'].includes(filter.type)"
-                    :is="`cmdb-form-${filter.type}`"
+                <cmdb-form-enum class="filter-value fl"
+                    v-if="filter.type === 'enum'"
                     :options="$tools.getEnumOptions(properties, filter.id)"
                     :allow-clear="true"
                     :auto-select="false"
                     v-model="filter.value"
                     font-size="medium"
                     @on-selected="handleFilterData">
-                </component>
+                </cmdb-form-enum>
                 <bk-input class="filter-value cmdb-form-input fl" type="text" maxlength="11"
                     v-else-if="filter.type === 'int'"
                     v-model.number="filter.value"
@@ -73,7 +72,7 @@
             v-bkloading="{ isLoading: $loading('post_searchBusiness_list') }"
             :data="table.list"
             :pagination="table.pagination"
-            :max-height="$APP.height - 200"
+            :max-height="$APP.height - 190"
             :row-style="{ cursor: 'pointer' }"
             @row-click="handleRowClick"
             @sort-change="handleSortChange"
@@ -87,7 +86,6 @@
                 :key="column.id"
                 :prop="column.id"
                 :label="column.name">
-                <template slot-scope="{ row }">{{row[column.id] | formatter(column.property)}}</template>
             </bk-table-column>
             <cmdb-table-empty
                 slot="empty"
@@ -158,8 +156,8 @@
 </template>
 
 <script>
-    import { mapState, mapGetters, mapActions } from 'vuex'
-    import { MENU_RESOURCE_BUSINESS_HISTORY } from '@/dictionary/menu-symbol'
+    import { mapGetters, mapActions } from 'vuex'
+    import { MENU_RESOURCE_BUSINESS_HISTORY, MENU_RESOURCE_MANAGEMENT } from '@/dictionary/menu-symbol'
     import cmdbColumnsConfig from '@/components/columns-config/columns-config'
     import cmdbAuditHistory from '@/components/audit-history/audit-history.vue'
     import cmdbRelation from '@/components/relation'
@@ -219,7 +217,6 @@
             }
         },
         computed: {
-            ...mapState('userCustom', ['globalUsercustom']),
             ...mapGetters(['supplierAccount', 'userName', 'isAdminView']),
             ...mapGetters('userCustom', ['usercustom']),
             ...mapGetters('objectBiz', ['bizId']),
@@ -229,9 +226,6 @@
             },
             customBusinessColumns () {
                 return this.usercustom[this.columnsConfigKey] || []
-            },
-            globalCustomColumns () {
-                return this.globalUsercustom['biz_global_custom_table_columns'] || []
             },
             saveAuth () {
                 const type = this.attribute.type
@@ -262,6 +256,7 @@
         },
         async created () {
             try {
+                this.setDynamicBreadcrumbs()
                 this.properties = await this.searchObjectAttribute({
                     params: this.$injectMetadata({
                         bk_obj_id: 'biz',
@@ -277,8 +272,6 @@
                     this.setTableHeader(),
                     this.setFilterOptions()
                 ])
-                
-                // 配合全文检索过滤列表
                 if (this.$route.params.bizName) {
                     this.filter.sendValue = this.$route.params.bizName
                     this.filter.value = this.$route.params.bizName
@@ -298,6 +291,16 @@
                 'createBusiness',
                 'searchBusinessById'
             ]),
+            setDynamicBreadcrumbs () {
+                this.$store.commit('setBreadcrumbs', [{
+                    label: this.$t('资源目录'),
+                    route: {
+                        name: MENU_RESOURCE_MANAGEMENT
+                    }
+                }, {
+                    label: this.$t('业务')
+                }])
+            },
             getPropertyGroups () {
                 return this.searchGroup({
                     objId: 'biz',
@@ -313,8 +316,7 @@
             },
             setTableHeader () {
                 return new Promise((resolve, reject) => {
-                    const customColumns = this.customBusinessColumns.length ? this.customBusinessColumns : this.globalCustomColumns
-                    const headerProperties = this.$tools.getHeaderProperties(this.properties, customColumns, this.columnsConfig.disabledColumns)
+                    const headerProperties = this.$tools.getHeaderProperties(this.properties, this.customBusinessColumns, this.columnsConfig.disabledColumns)
                     resolve(headerProperties)
                 }).then(properties => {
                     this.updateTableHeader(properties)
@@ -336,8 +338,7 @@
                 this.table.header = properties.map(property => {
                     return {
                         id: property['bk_property_id'],
-                        name: this.$tools.getHeaderPropertyName(property),
-                        property
+                        name: property['bk_property_name']
                     }
                 })
             },
@@ -376,7 +377,7 @@
                         this.table.pagination.current -= 1
                         this.getTableData()
                     }
-                    this.table.list = data.info
+                    this.table.list = this.$tools.flattenList(this.properties, data.info)
                     this.table.pagination.count = data.count
 
                     if (event) {
@@ -418,7 +419,9 @@
                 }
                 return params
             },
-            async handleEdit (inst) {
+            async handleEdit (flattenItem) {
+                const list = await this.getBusinessList({ fromCache: true })
+                const inst = list.info.find(item => item['bk_biz_id'] === flattenItem['bk_biz_id'])
                 const bizNameProperty = this.$tools.getProperty(this.properties, 'bk_biz_name')
                 bizNameProperty.isreadonly = inst['bk_biz_name'] === '蓝鲸'
                 this.attribute.inst.edit = inst
@@ -433,7 +436,6 @@
             handleDelete (inst) {
                 this.$bkInfo({
                     title: this.$t('确认要归档', { name: inst['bk_biz_name'] }),
-                    subTitle: this.$t('归档确认信息'),
                     confirmFn: () => {
                         this.archiveBusiness(inst['bk_biz_id']).then(() => {
                             this.slider.show = false
@@ -450,8 +452,10 @@
                         bizId: originalValues['bk_biz_id'],
                         params: values
                     }).then(() => {
-                        this.attribute.inst.details = Object.assign({}, originalValues, values)
                         this.getTableData()
+                        this.searchBusinessById({ bizId: originalValues['bk_biz_id'] }).then(item => {
+                            this.attribute.inst.details = this.$tools.flattenItem(this.properties, item)
+                        })
                         this.handleCancel()
                         this.$success(this.$t('修改成功'))
                         this.$http.cancel('post_searchBusiness_$ne_disabled')
@@ -522,7 +526,7 @@
 
 <style lang="scss" scoped>
     .business-layout {
-        padding: 15px 20px 0;
+        padding: 0 20px;
     }
     .options-filter{
         position: relative;

@@ -15,37 +15,38 @@ package service
 import (
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	meta "configcenter/src/common/metadata"
 	"configcenter/src/common/util"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) GetHostModulesIDs(ctx *rest.Contexts) {
+func (s *coreService) GetHostModulesIDs(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	dat := &meta.ModuleHostConfigParams{}
-	if err := ctx.DecodeInto(dat); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(dat); err != nil {
+		blog.Errorf("get host module id failed, err: %v, rid: %s", err, params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommJSONUnmarshalFailed)
 	}
 
 	condition := map[string]interface{}{common.BKAppIDField: dat.ApplicationID, common.BKHostIDField: dat.HostID}
-	condition = util.SetModOwner(condition, ctx.Kit.SupplierAccount)
-	moduleIDs, err := s.getModuleIDsByHostID(ctx.Kit, condition)
+	condition = util.SetModOwner(condition, params.SupplierAccount)
+	moduleIDs, err := s.getModuleIDsByHostID(params, condition)
 	if nil != err {
-		blog.Errorf("get host module id failed, err: %v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCError(common.CCErrGetModule))
-		return
+		blog.Errorf("get host module id failed, err: %v, rid: %s", err, params.ReqID)
+		return nil, params.Error.CCError(common.CCErrGetModule)
 	}
-	ctx.RespEntity(moduleIDs)
+
+	return moduleIDs, nil
 }
 
-func (s *coreService) getModuleIDsByHostID(kit *rest.Kit, moduleCond interface{}) ([]int64, error) {
+func (s *coreService) getModuleIDsByHostID(params core.ContextParams, moduleCond interface{}) ([]int64, error) {
 	result := make([]meta.ModuleHost, 0)
 	var ret []int64
 
-	err := s.db.Table(common.BKTableNameModuleHostConfig).Find(moduleCond).Fields(common.BKModuleIDField).All(kit.Ctx, &result)
+	err := s.db.Table(common.BKTableNameModuleHostConfig).Find(moduleCond).Fields(common.BKModuleIDField).All(params.Context, &result)
 	if nil != err {
-		blog.Errorf("get module id by host id failed, error: %s, rid: %s", err.Error(), kit.Rid)
-		return nil, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.Errorf("get module id by host id failed, error: %s, rid: %s", err.Error(), params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	for _, r := range result {
 		ret = append(ret, r.ModuleID)

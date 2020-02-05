@@ -1,10 +1,13 @@
 <template>
     <div class="template-wrapper" ref="templateWrapper">
-        <cmdb-tips class="mb10 top-tips" tips-key="serviceTemplateTips">
+        <feature-tips
+            :feature-name="'serviceTemplate'"
+            :show-tips="showFeatureTips"
+            @close-tips="showFeatureTips = false">
             <i18n path="服务模板功能提示">
                 <a class="tips-link" href="javascript:void(0)" @click="handleTipsLinkClick" place="link">{{$t('业务拓扑')}}</a>
             </i18n>
-        </cmdb-tips>
+        </feature-tips>
         <div class="template-filter clearfix">
             <cmdb-auth class="fl mr10" :auth="$authResources({ type: $OPERATION.C_SERVICE_TEMPLATE })">
                 <bk-button slot-scope="{ disabled }"
@@ -21,7 +24,6 @@
                     :placeholder="$t('所有一级分类')"
                     :auto-select="false"
                     :allow-clear="true"
-                    :searchable="true"
                     :list="mainList"
                     v-model="filter['mainClassification']"
                     @on-selected="handleSelect">
@@ -32,7 +34,6 @@
                     :placeholder="$t('所有二级分类')"
                     :auto-select="false"
                     :allow-clear="true"
-                    :searchable="true"
                     :list="secondaryList"
                     v-model="filter['secondaryClassification']"
                     :empty-text="emptyText"
@@ -45,8 +46,7 @@
                     clearable
                     font-size="medium"
                     v-model.trim="filter.templateName"
-                    @enter="getTableData(true)"
-                    @clear="handlePageChange(1)">
+                    @enter="getTableData(true)">
                 </bk-input>
             </div>
         </div>
@@ -79,7 +79,7 @@
                             theme="primary"
                             :disabled="disabled"
                             :text="true"
-                            @click.stop="operationTemplate(row['id'], 'edit')">
+                            @click.stop="operationTemplate(row['id'])">
                             {{$t('编辑')}}
                         </bk-button>
                     </cmdb-auth>
@@ -116,11 +116,16 @@
 </template>
 
 <script>
-    import { mapActions } from 'vuex'
+    import { mapGetters, mapActions } from 'vuex'
+    import featureTips from '@/components/feature-tips/index'
     import { MENU_BUSINESS_HOST_AND_SERVICE } from '@/dictionary/menu-symbol'
     export default {
+        components: {
+            featureTips
+        },
         data () {
             return {
+                showFeatureTips: false,
                 filter: {
                     mainClassification: '',
                     secondaryClassification: '',
@@ -153,6 +158,7 @@
             }
         },
         computed: {
+            ...mapGetters(['featureTipsParams']),
             params () {
                 const id = this.categoryId
                     ? this.categoryId
@@ -169,12 +175,10 @@
             },
             emptyText () {
                 return this.filter.mainClassification ? this.$t('没有二级分类') : this.$t('请选择一级分类')
-            },
-            hasFilter () {
-                return Object.values(this.filter).some(value => !!value)
             }
         },
         async created () {
+            this.showFeatureTips = this.featureTipsParams['serviceTemplate']
             try {
                 await this.getServiceClassification()
                 await this.getTableData()
@@ -203,9 +207,13 @@
                         const secondaryCategoryName = secondaryCategory ? secondaryCategory['name'] : '--'
                         const mainCategoryName = mainCategory ? mainCategory['name'] : '--'
                         result['service_category'] = `${mainCategoryName} / ${secondaryCategoryName}`
+
+                        if (event) {
+                            this.table.stuff.type = 'search'
+                        }
+
                         return result
                     })
-                    this.table.stuff.type = this.hasFilter ? 'search' : 'default'
                     this.table.list = this.table.allList
                 } catch ({ permission }) {
                     if (permission) {
@@ -247,12 +255,11 @@
                 this.categoryId = id
                 this.getTableData(true)
             },
-            operationTemplate (id, type) {
+            operationTemplate (id) {
                 this.$router.push({
                     name: 'operationalTemplate',
                     params: {
-                        templateId: id,
-                        isEdit: type === 'edit'
+                        templateId: id
                     }
                 })
             },
@@ -307,9 +314,8 @@
 
 <style lang="scss" scoped>
     .template-wrapper {
-        padding: 15px 20px 0;
+        padding: 0 20px;
         .tips-link {
-            color: #3A84FF;
             margin: 0;
         }
         .filter-text {

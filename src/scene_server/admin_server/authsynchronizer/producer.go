@@ -206,7 +206,7 @@ func (p *Producer) generateJobs() *[]meta.WorkRequest {
 
 func FilterJobs(jobs []meta.WorkRequest) []meta.WorkRequest {
 	debugSync := false
-	if !debugSync {
+	if debugSync == false {
 		return jobs
 	}
 	debugResourceType := make([]meta.ResourceType, 0)

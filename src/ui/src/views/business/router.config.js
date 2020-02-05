@@ -18,11 +18,6 @@ export default [{
         menu: {
             i18n: '业务',
             relative: MENU_RESOURCE_MANAGEMENT
-        },
-        layout: {
-            previous: {
-                name: MENU_RESOURCE_MANAGEMENT
-            }
         }
     })
 }, {
@@ -39,9 +34,6 @@ export default [{
             operation: {
                 BUSINESS_ARCHIVE
             }
-        },
-        layout: {
-            previous: { name: MENU_RESOURCE_BUSINESS }
         }
     })
 }]

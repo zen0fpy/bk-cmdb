@@ -1,17 +1,14 @@
 <template>
-    <section class="delete-layout">
+    <section class="layout">
         <cmdb-tips
             :tips-style="{
                 background: 'none',
                 border: 'none',
-                fontSize: '12px',
-                lineHeight: '30px',
-                padding: 0
+                fontSize: '12px'
             }"
             :icon-style="{
                 color: '#63656E',
-                fontSize: '14px',
-                lineHeight: '30px'
+                fontSize: '14px'
             }">
             {{$t('删除服务实例提示')}}
         </cmdb-tips>

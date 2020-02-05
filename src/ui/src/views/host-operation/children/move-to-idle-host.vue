@@ -4,14 +4,11 @@
             :tips-style="{
                 background: 'none',
                 border: 'none',
-                fontSize: '12px',
-                lineHeight: '30px',
-                padding: 0
+                fontSize: '12px'
             }"
             :icon-style="{
                 color: '#63656E',
-                fontSize: '14px',
-                lineHeight: '30px'
+                fontSize: '14px'
             }">
             {{$t('移动到空闲机的主机提示')}}
         </cmdb-tips>

@@ -1,8 +1,13 @@
 <template>
-    <div class="custom-fields-layout" :style="{ padding: featureTips ? '15px 0 0 0' : 0 }">
-        <cmdb-tips class="ml20 mr20 mb10" tips-key="showCustomFields" v-model="featureTips">{{$t('自定义字段功能提示')}}</cmdb-tips>
+    <div class="custom-fields-layout">
+        <feature-tips class="ml20 mr20"
+            :feature-name="'customFields'"
+            :show-tips="showFeatureTips"
+            :desc="$t('自定义字段功能提示')"
+            @close-tips="showFeatureTips = false">
+        </feature-tips>
         <bk-tab class="tab-layout"
-            :style="`--subHeight: ${featureTips ? '42px' : 0}`"
+            :style="`--subHeight: ${showFeatureTips ? '42px' : 0}`"
             type="unborder-card"
             @tab-change="handleTabChange">
             <bk-tab-panel v-for="model in mainLine"
@@ -12,7 +17,7 @@
                 :label="model.bk_obj_name">
                 <field-group class="model-detail-wrapper"
                     :class="{
-                        'has-tips': featureTips
+                        'has-tips': showFeatureTips
                     }"
                     :custom-obj-id="model.bk_obj_id">
                 </field-group>
@@ -22,19 +27,26 @@
 </template>
 
 <script>
+    import featureTips from '@/components/feature-tips/index'
     import fieldGroup from '@/components/model-manage/field-group'
+    import { mapGetters } from 'vuex'
     export default {
         components: {
-            fieldGroup
+            fieldGroup,
+            featureTips
         },
         data () {
             return {
-                featureTips: true,
-                mainLine: []
+                mainLine: [],
+                showFeatureTips: false
             }
+        },
+        computed: {
+            ...mapGetters(['featureTipsParams'])
         },
         async created () {
             try {
+                this.showFeatureTips = this.featureTipsParams['customFields']
                 const data = await this.getMainLine()
                 this.mainLine = data.filter(model => ['host', 'set', 'module'].includes(model.bk_obj_id))
             } catch (e) {
@@ -58,6 +70,9 @@
 </script>
 
 <style lang="scss" scoped>
+    .custom-fields-layout {
+        padding: 0;
+    }
     .tab-layout {
         height: calc(100% - var(--subHeight));
         /deep/ {

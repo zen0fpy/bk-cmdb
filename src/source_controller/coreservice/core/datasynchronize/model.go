@@ -14,8 +14,8 @@ package datasynchronize
 import (
 	"configcenter/src/common"
 	"configcenter/src/common/errors"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 	"configcenter/src/storage/dal"
 )
 
@@ -36,79 +36,79 @@ func NewSynchronizeModelAdapter(s *metadata.SynchronizeParameter, dbProxy dal.RD
 	}
 }
 
-func (m *model) PreSynchronizeFilter(kit *rest.Kit) errors.CCError {
-	err := m.preSynchronizeFilterBefore(kit)
+func (m *model) PreSynchronizeFilter(ctx core.ContextParams) errors.CCError {
+	err := m.preSynchronizeFilterBefore(ctx)
 	if err != nil {
 		return err
 	}
-	return m.base.PreSynchronizeFilter(kit)
+	return m.base.PreSynchronizeFilter(ctx)
 }
 
-func (m *model) GetErrorStringArr(kit *rest.Kit) ([]metadata.ExceptionResult, errors.CCError) {
+func (m *model) GetErrorStringArr(ctx core.ContextParams) ([]metadata.ExceptionResult, errors.CCError) {
 
 	if len(m.base.errorArray) == 0 {
 		return nil, nil
 	}
 
-	return m.base.GetErrorStringArr(kit)
+	return m.base.GetErrorStringArr(ctx)
 
 }
-func (m *model) SaveSynchronize(kit *rest.Kit) errors.CCError {
+func (m *model) SaveSynchronize(ctx core.ContextParams) errors.CCError {
 	// Each model is written separately for subsequent expansion,
 	// each type may be processed differently.
 	switch m.DataClassify {
 	case common.SynchronizeModelTypeClassification:
-		return m.saveSynchronizeModelClassification(kit)
+		return m.saveSynchronizeModelClassification(ctx)
 	case common.SynchronizeModelTypeAttribute:
-		return m.saveSynchronizeModelAttribute(kit)
+		return m.saveSynchronizeModelAttribute(ctx)
 	case common.SynchronizeModelTypeAttributeGroup:
-		return m.saveSynchronizeModelAttributeGroup(kit)
+		return m.saveSynchronizeModelAttributeGroup(ctx)
 	case common.SynchronizeModelTypeBase:
-		return m.saveSynchronizeModelBase(kit)
+		return m.saveSynchronizeModelBase(ctx)
 	default:
-		return kit.CCError.Errorf(common.CCErrCoreServiceSyncDataClassifyNotExistError, m.dataType, m.DataClassify)
+		return ctx.Error.Errorf(common.CCErrCoreServiceSyncDataClassifyNotExistError, m.dataType, m.DataClassify)
 	}
 }
 
-func (m *model) saveSynchronizeModelClassification(kit *rest.Kit) errors.CCError {
+func (m *model) saveSynchronizeModelClassification(ctx core.ContextParams) errors.CCError {
 	var dbParam synchronizeAdapterDBParameter
 	// "cc_ObjClassification"
-	dbParam.tableName = common.BKTableNameObjClassification
+	dbParam.tableName = common.BKTableNameObjClassifiction
 	dbParam.InstIDField = common.BKFieldID
-	m.base.saveSynchronize(kit, dbParam)
+	m.base.saveSynchronize(ctx, dbParam)
 	return nil
 }
 
-func (m *model) saveSynchronizeModelAttribute(kit *rest.Kit) errors.CCError {
+func (m *model) saveSynchronizeModelAttribute(ctx core.ContextParams) errors.CCError {
 	var dbParam synchronizeAdapterDBParameter
 	// "cc_ObjAttDes"
 	dbParam.tableName = common.BKTableNameObjAttDes
 	dbParam.InstIDField = common.BKFieldID
-	m.base.saveSynchronize(kit, dbParam)
+	m.base.saveSynchronize(ctx, dbParam)
 	return nil
 }
 
-func (m *model) saveSynchronizeModelAttributeGroup(kit *rest.Kit) errors.CCError {
+func (m *model) saveSynchronizeModelAttributeGroup(ctx core.ContextParams) errors.CCError {
 	var dbParam synchronizeAdapterDBParameter
 	// cc_PropertyGroup
 	dbParam.tableName = common.BKTableNamePropertyGroup
 	dbParam.InstIDField = common.BKFieldID
-	m.base.saveSynchronize(kit, dbParam)
+	m.base.saveSynchronize(ctx, dbParam)
 	return nil
 }
 
-func (m *model) saveSynchronizeModelBase(kit *rest.Kit) errors.CCError {
+func (m *model) saveSynchronizeModelBase(ctx core.ContextParams) errors.CCError {
 	var dbParam synchronizeAdapterDBParameter
 	// cc_ObjDes
 	dbParam.tableName = common.BKTableNameObjDes
 	dbParam.InstIDField = common.BKFieldID
-	m.base.saveSynchronize(kit, dbParam)
+	m.base.saveSynchronize(ctx, dbParam)
 	return nil
 }
 
-func (m *model) preSynchronizeFilterBefore(kit *rest.Kit) errors.CCError {
+func (m *model) preSynchronizeFilterBefore(ctx core.ContextParams) errors.CCError {
 	return nil
 }
-func (m *model) preSynchronizeFilterEnd(kit *rest.Kit) errors.CCError {
+func (m *model) preSynchronizeFilterEnd(ctx core.ContextParams) errors.CCError {
 	return nil
 }

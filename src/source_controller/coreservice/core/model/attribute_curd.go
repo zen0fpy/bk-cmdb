@@ -13,22 +13,19 @@
 package model
 
 import (
-	"context"
-	"fmt"
+	"regexp"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/universalsql"
 	"configcenter/src/common/universalsql/mongo"
 	"configcenter/src/common/util"
-	"configcenter/src/storage/dal"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
 var (
@@ -54,26 +51,20 @@ var (
 	}
 )
 
-func (m *modelAttribute) Count(kit *rest.Kit, cond universalsql.Condition) (cnt uint64, err error) {
-	cnt, err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).Count(kit.Ctx)
+func (m *modelAttribute) count(ctx core.ContextParams, cond universalsql.Condition) (cnt uint64, err error) {
+	cnt, err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).Count(ctx)
 	return cnt, err
 }
 
-func (m *modelAttribute) save(kit *rest.Kit, attribute metadata.Attribute) (id uint64, err error) {
+func (m *modelAttribute) save(ctx core.ContextParams, attribute metadata.Attribute) (id uint64, err error) {
 
-	id, err = m.dbProxy.NextSequence(kit.Ctx, common.BKTableNameObjAttDes)
+	id, err = m.dbProxy.NextSequence(ctx, common.BKTableNameObjAttDes)
 	if err != nil {
-		return id, kit.CCError.New(common.CCErrObjectDBOpErrno, err.Error())
+		return id, ctx.Error.New(common.CCErrObjectDBOpErrno, err.Error())
 	}
 
-	index, err := m.GetAttrLastIndex(kit, attribute)
-	if err != nil {
-		return id, err
-	}
-
-	attribute.PropertyIndex = index
 	attribute.ID = int64(id)
-	attribute.OwnerID = kit.SupplierAccount
+	attribute.OwnerID = ctx.SupplierAccount
 
 	if nil == attribute.CreateTime {
 		attribute.CreateTime = &metadata.Time{}
@@ -85,15 +76,15 @@ func (m *modelAttribute) save(kit *rest.Kit, attribute metadata.Attribute) (id u
 		attribute.LastTime.Time = time.Now()
 	}
 
-	if err = m.saveCheck(kit, attribute); err != nil {
+	if err = m.saveCheck(ctx, attribute); err != nil {
 		return 0, err
 	}
 
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Insert(kit.Ctx, attribute)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Insert(ctx, attribute)
 	return id, err
 }
 
-func (m *modelAttribute) checkUnique(kit *rest.Kit, isCreate bool, objID, propertyID, propertyName string, meta metadata.Metadata) error {
+func (m *modelAttribute) checkUnique(ctx core.ContextParams, isCreate bool, objID, propertyID, propertyName string, meta metadata.Metadata) error {
 	cond := mongo.NewCondition()
 	cond = cond.Element(mongo.Field(common.BKObjIDField).Eq(objID))
 
@@ -118,140 +109,137 @@ func (m *modelAttribute) checkUnique(kit *rest.Kit, isCreate bool, objID, proper
 		cond = cond.Element(nameFieldCond, idFieldCond)
 	}
 
-	condMap := util.SetModOwner(cond.ToMapStr(), kit.SupplierAccount)
+	condMap := util.SetModOwner(cond.ToMapStr(), ctx.SupplierAccount)
 
 	resultAttrs := make([]metadata.Attribute, 0)
-	err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(condMap).All(kit.Ctx, &resultAttrs)
-	blog.V(5).Infof("checkUnique db cond:%#v, result:%#v, rid:%s", condMap, resultAttrs, kit.Rid)
+	err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(condMap).All(ctx, &resultAttrs)
+	blog.V(5).Infof("checkUnique db cond:%#v, result:%#v, rid:%s", condMap, resultAttrs, ctx.ReqID)
 	if err != nil {
-		blog.ErrorJSON("checkUnique select error. err:%s, cond:%s, rid:%s", err.Error(), condMap, kit.Rid)
-		return kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.ErrorJSON("checkUnique select error. err:%s, cond:%s, rid:%s", err.Error(), condMap, ctx.ReqID)
+		return ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
-
-	language := util.GetLanguage(kit.Header)
-	lang := m.language.CreateDefaultCCLanguageIf(language)
 	for _, attrItem := range resultAttrs {
 		if attrItem.PropertyID == propertyID {
-			return kit.CCError.Errorf(common.CCErrCommDuplicateItem, lang.Language("model_attr_bk_property_id"))
+			return ctx.Error.Errorf(common.CCErrCommDuplicateItem, ctx.Lang.Language("model_attr_bk_property_id"))
 		}
 		if attrItem.PropertyName == propertyName {
-			return kit.CCError.Errorf(common.CCErrCommDuplicateItem, lang.Language("model_attr_bk_property_name"))
+			return ctx.Error.Errorf(common.CCErrCommDuplicateItem, ctx.Lang.Language("model_attr_bk_property_name"))
 		}
 	}
 
 	return nil
 }
 
-func (m *modelAttribute) checkAttributeMustNotEmpty(kit *rest.Kit, attribute metadata.Attribute) error {
+func (m *modelAttribute) checkAttributeMustNotEmpty(ctx core.ContextParams, attribute metadata.Attribute) error {
 	if attribute.PropertyID == "" {
-		return kit.CCError.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyID)
+		return ctx.Error.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyID)
 	}
 	if attribute.PropertyName == "" {
-		return kit.CCError.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyName)
+		return ctx.Error.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyName)
 	}
 	if attribute.PropertyType == "" {
-		return kit.CCError.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyType)
+		return ctx.Error.Errorf(common.CCErrCommParamsNeedSet, metadata.AttributeFieldPropertyType)
 	}
 	return nil
 }
 
-func (m *modelAttribute) checkAttributeValidity(kit *rest.Kit, attribute metadata.Attribute) error {
-	language := util.GetLanguage(kit.Header)
-	lang := m.language.CreateDefaultCCLanguageIf(language)
-	if attribute.PropertyID != "" {
-		attribute.PropertyID = strings.TrimSpace(attribute.PropertyID)
-		if common.AttributeIDMaxLength < utf8.RuneCountInString(attribute.PropertyID) {
-			return kit.CCError.Errorf(common.CCErrCommValExceedMaxFailed, lang.Language("model_attr_bk_property_id"), common.AttributeIDMaxLength)
-		}
-
-		if !SatisfyMongoFieldLimit(attribute.PropertyID) {
-			blog.Errorf("attribute.PropertyID:%s not SatisfyMongoFieldLimit", attribute.PropertyID)
-			return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPropertyID)
+func (m *modelAttribute) checkAttributeValidity(ctx core.ContextParams, attribute metadata.Attribute) error {
+	if common.AttributeIDMaxLength < utf8.RuneCountInString(attribute.PropertyID) {
+		return ctx.Error.Errorf(common.CCErrCommValExceedMaxFailed, ctx.Lang.Language("model_attr_bk_property_id"), common.AttributeIDMaxLength)
+	} else if attribute.PropertyID != "" {
+		match, err := regexp.MatchString(common.FieldTypeStrictCharRegexp, attribute.PropertyID)
+		if nil != err || !match {
+			return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPropertyID)
 		}
 	}
 
-	if attribute.PropertyName = strings.TrimSpace(attribute.PropertyName); common.AttributeNameMaxLength < utf8.RuneCountInString(attribute.PropertyName) {
-		return kit.CCError.Errorf(common.CCErrCommValExceedMaxFailed, lang.Language("model_attr_bk_property_name"), common.AttributeNameMaxLength)
+	if common.AttributeNameMaxLength < utf8.RuneCountInString(attribute.PropertyName) {
+		return ctx.Error.Errorf(common.CCErrCommValExceedMaxFailed, ctx.Lang.Language("model_attr_bk_property_name"), common.AttributeNameMaxLength)
+	} else if attribute.PropertyName != "" {
+		attribute.PropertyName = strings.TrimSpace(attribute.PropertyName)
+		match, err := regexp.MatchString(common.FieldTypeSingleCharRegexp, attribute.PropertyName)
+		if nil != err || !match {
+			return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPropertyName)
+		}
 	}
 
 	if attribute.Placeholder != "" {
-		attribute.Placeholder = strings.TrimSpace(attribute.Placeholder)
 		if common.AttributePlaceHolderMaxLength < utf8.RuneCountInString(attribute.Placeholder) {
-			return kit.CCError.Errorf(common.CCErrCommValExceedMaxFailed, lang.Language("model_attr_placeholder"), common.AttributePlaceHolderMaxLength)
+			return ctx.Error.Errorf(common.CCErrCommValExceedMaxFailed, ctx.Lang.Language("model_attr_placeholder"), common.AttributePlaceHolderMaxLength)
+		}
+		attribute.Placeholder = strings.TrimSpace(attribute.Placeholder)
+		match, err := regexp.MatchString(common.FieldTypeLongCharRegexp, attribute.Placeholder)
+		if nil != err || !match {
+			return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPlaceHoler)
 		}
 	}
 
 	if attribute.Unit != "" {
-		attribute.Unit = strings.TrimSpace(attribute.Unit)
 		if common.AttributeUnitMaxLength < utf8.RuneCountInString(attribute.Unit) {
-			return kit.CCError.Errorf(common.CCErrCommValExceedMaxFailed, lang.Language("model_attr_uint"), common.AttributeUnitMaxLength)
+			return ctx.Error.Errorf(common.CCErrCommValExceedMaxFailed, ctx.Lang.Language("model_attr_uint"), common.AttributeUnitMaxLength)
+		}
+		attribute.Unit = strings.TrimSpace(attribute.Unit)
+		match, err := regexp.MatchString(common.FieldTypeSingleCharRegexp, attribute.Unit)
+		if nil != err || !match {
+			return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldUnit)
 		}
 	}
 
 	if attribute.PropertyType != "" {
 		switch attribute.PropertyType {
 		case common.FieldTypeSingleChar, common.FieldTypeLongChar, common.FieldTypeInt, common.FieldTypeFloat, common.FieldTypeEnum,
-			common.FieldTypeDate, common.FieldTypeTime, common.FieldTypeUser, common.FieldTypeOrganization,common.FieldTypeTimeZone, common.FieldTypeBool, common.FieldTypeList:
+			common.FieldTypeDate, common.FieldTypeTime, common.FieldTypeUser, common.FieldTypeTimeZone, common.FieldTypeBool, common.FieldTypeList:
 		default:
-			return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPropertyType)
+			return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldPropertyType)
 		}
 	}
 
 	if opt, ok := attribute.Option.(string); ok && opt != "" {
 		if common.AttributeOptionMaxLength < utf8.RuneCountInString(opt) {
-			return kit.CCError.Errorf(common.CCErrCommValExceedMaxFailed, lang.Language("model_attr_option_regex"), common.AttributeOptionMaxLength)
+			return ctx.Error.Errorf(common.CCErrCommValExceedMaxFailed, ctx.Lang.Language("model_attr_option_regex"), common.AttributeOptionMaxLength)
 		}
 	}
 
 	return nil
 }
 
-func (m *modelAttribute) update(kit *rest.Kit, data mapstr.MapStr, cond universalsql.Condition) (cnt uint64, err error) {
-	cnt, err = m.checkUpdate(kit, data, cond)
+func (m *modelAttribute) update(ctx core.ContextParams, data mapstr.MapStr, cond universalsql.Condition) (cnt uint64, err error) {
+	cnt, err = m.checkUpdate(ctx, data, cond)
 	if err != nil {
-		blog.ErrorJSON("checkUpdate error. data:%s, cond:%s, rid:%s", data, cond, kit.Rid)
 		return cnt, err
 	}
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Update(kit.Ctx, cond.ToMapStr(), data)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Update(ctx, cond.ToMapStr(), data)
 	if nil != err {
-		blog.Errorf("request(%s): database operation is failed, error info is %s", kit.Rid, err.Error())
+		blog.Errorf("request(%s): database operation is failed, error info is %s", ctx.ReqID, err.Error())
 		return 0, err
 	}
 
 	return cnt, err
 }
 
-func (m *modelAttribute) search(kit *rest.Kit, cond universalsql.Condition) (resultAttrs []metadata.Attribute, err error) {
+func (m *modelAttribute) search(ctx core.ContextParams, cond universalsql.Condition) (resultAttrs []metadata.Attribute, err error) {
+
 	resultAttrs = []metadata.Attribute{}
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).All(kit.Ctx, &resultAttrs)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).All(ctx, &resultAttrs)
 	return resultAttrs, err
 }
 
-func (m *modelAttribute) searchWithSort(kit *rest.Kit, cond metadata.QueryCondition) (resultAttrs []metadata.Attribute, err error) {
-	resultAttrs = []metadata.Attribute{}
-
-	instHandler := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.Condition)
-	err = instHandler.Start(uint64(cond.Page.Start)).Limit(uint64(cond.Page.Limit)).Sort(cond.Page.Sort).All(kit.Ctx, &resultAttrs)
-
-	return resultAttrs, err
-}
-
-func (m *modelAttribute) searchReturnMapStr(kit *rest.Kit, cond universalsql.Condition) (resultAttrs []mapstr.MapStr, err error) {
+func (m *modelAttribute) searchReturnMapStr(ctx core.ContextParams, cond universalsql.Condition) (resultAttrs []mapstr.MapStr, err error) {
 
 	resultAttrs = []mapstr.MapStr{}
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).All(kit.Ctx, &resultAttrs)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond.ToMapStr()).All(ctx, &resultAttrs)
 	return resultAttrs, err
 }
 
-func (m *modelAttribute) delete(kit *rest.Kit, cond universalsql.Condition) (cnt uint64, err error) {
+func (m *modelAttribute) delete(ctx core.ContextParams, cond universalsql.Condition) (cnt uint64, err error) {
 
 	resultAttrs := make([]metadata.Attribute, 0)
-	fields := []string{common.BKFieldID, common.BKPropertyIDField, common.BKObjIDField, common.MetadataField}
+	fields := []string{common.BKFieldID, common.BKPropertyIDField, common.BKObjIDField}
 
-	condMap := util.SetQueryOwner(cond.ToMapStr(), kit.SupplierAccount)
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(condMap).Fields(fields...).All(kit.Ctx, &resultAttrs)
+	condMap := util.SetQueryOwner(cond.ToMapStr(), ctx.SupplierAccount)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Find(condMap).Fields(fields...).All(ctx, &resultAttrs)
 	if nil != err {
-		blog.Errorf("request(%s): database count operation is failed, error info is %s", kit.Rid, err.Error())
+		blog.Errorf("request(%s): database count operation is failed, error info is %s", ctx.ReqID, err.Error())
 		return 0, err
 	}
 
@@ -265,266 +253,43 @@ func (m *modelAttribute) delete(kit *rest.Kit, cond universalsql.Condition) (cnt
 		objIDArrMap[attr.ObjectID] = append(objIDArrMap[attr.ObjectID], attr.ID)
 	}
 
-	if err := m.cleanAttributeFieldInInstances(kit.Ctx, kit.SupplierAccount, resultAttrs); err != nil {
-		blog.ErrorJSON("delete object attributes with cond: %s, but delete these attribute in instance failed, err: %v, rid:%s", condMap, err, kit.Rid)
-		return 0, err
-	}
-
-	exist, err := m.checkAttributeInUnique(kit, objIDArrMap)
+	exist, err := m.checkAttributeInUnique(ctx, objIDArrMap)
 	if err != nil {
-		blog.ErrorJSON("check attribute in unique error. err:%s, input:%s, rid:%s", err.Error(), condMap, kit.Rid)
+		blog.ErrorJSON("check attribute in unique error. err:%s, input:%s, rid:%s", err.Error(), condMap, ctx.ReqID)
 		return 0, err
 	}
 	// delete field in module unique. not allow delete
 	if exist {
-		blog.ErrorJSON("delete field in unique. delete cond:%s, field:%s, rid:%s", condMap, resultAttrs, kit.Rid)
-		return 0, kit.CCError.Error(common.CCErrCoreServiceNotAllowUniqueAttr)
+		blog.ErrorJSON("delete field in unique. delete cond:%s, field:%s, rid:%s", condMap, resultAttrs, ctx.ReqID)
+		return 0, ctx.Error.Error(common.CCErrCoreServiceNotAllowUniqueAttr)
 	}
 
-	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Delete(kit.Ctx, condMap)
+	err = m.dbProxy.Table(common.BKTableNameObjAttDes).Delete(ctx, condMap)
 	if nil != err {
-		blog.Errorf("request(%s): database deletion operation is failed, error info is %s", kit.Rid, err.Error())
+		blog.Errorf("request(%s): database deletion operation is failed, error info is %s", ctx.ReqID, err.Error())
 		return 0, err
 	}
 
 	return cnt, err
 }
 
-type bizObjectFields struct {
-	bizID  int64
-	object string
-	fields []string
-}
-
-// remove attribute filed in this object's instances
-func (m *modelAttribute) cleanAttributeFieldInInstances(ctx context.Context, ownerID string, attrs []metadata.Attribute) error {
-
-	objPublicFields := make(map[string][]string)
-	objBizFields := make([]bizObjectFields, 0)
-
-	// TODO: now, we only support set, module, host model's biz attribute clean operation.
-	for _, attr := range attrs {
-
-		biz, err := metadata.BizIDFromMetadata(attr.Metadata)
-		if err != nil {
-			return err
-		}
-
-		if biz != 0 {
-			if !isBizObject(attr.ObjectID) {
-				return fmt.Errorf("unsupported object %s's clean instance field operation", attr.ObjectID)
-			}
-
-			// this is a business attribute
-			hit := false
-			for index, ele := range objBizFields {
-				if ele.object == attr.ObjectID && ele.bizID == biz {
-					hit = true
-					objBizFields[index].fields = append(objBizFields[index].fields, attr.PropertyID)
-				}
-			}
-
-			if !hit {
-				objBizFields = append(objBizFields, bizObjectFields{
-					bizID:  biz,
-					object: attr.ObjectID,
-					fields: []string{attr.PropertyID},
-				})
-			}
-
-		} else {
-			// this is a public attribute
-			_, exist := objPublicFields[attr.ObjectID]
-			if !exist {
-				objPublicFields[attr.ObjectID] = make([]string, 0)
-			}
-			objPublicFields[attr.ObjectID] = append(objPublicFields[attr.ObjectID], attr.PropertyID)
-		}
-	}
-
-	// delete these attribute's filed in the model instance
-	// step 1: handle object's public attribute
-	var hitError error
-	wg := sync.WaitGroup{}
-	for object, fields := range objPublicFields {
-
-		if len(fields) == 0 {
-			// no fields need to be removed, skip directly.
-			continue
-		}
-
-		var cond mapstr.MapStr
-		if isBizObject(object) {
-			if object == common.BKInnerObjIDHost {
-				ele := bizObjectFields{
-					bizID:  0,
-					object: object,
-					fields: fields,
-				}
-				if err := m.cleanHostAttributeField(ctx, ownerID, ele); err != nil {
-					return err
-				}
-				return nil
-			}
-
-			cond = mapstr.MapStr{}
-		} else {
-			cond = mapstr.MapStr{
-				common.BKObjIDField: object,
-			}
-		}
-		cond[common.BkSupplierAccount] = mapstr.MapStr{
-			"$in": []string{ownerID, common.BKDefaultOwnerID},
-		}
-
-		collectionName := common.GetInstTableName(object)
-		wg.Add(1)
-		go func(collName string, filter dal.Filter, fields []string) {
-			defer wg.Done()
-			if err := m.dbProxy.Table(collName).DropColumns(ctx, filter, fields); err != nil {
-				blog.Error("delete object's attribute from instance failed, table: %s, cond: %v, fields: %v, err: %v", collectionName, filter, fields, err)
-				hitError = err
-				return
-			}
-		}(collectionName, cond, fields)
-	}
-	// wait for all the public object routine is done.
-	wg.Wait()
-	if hitError != nil {
-		return hitError
-	}
-
-	// step 2: handle object's biz attribute
-	wg = sync.WaitGroup{}
-	for _, ele := range objBizFields {
-		if len(ele.fields) == 0 {
-			// no fields need to be removed, skip directly.
-			continue
-		}
-		if !isBizObject(ele.object) {
-			return fmt.Errorf("unsupported object %s's clean instance field operation", ele.object)
-		}
-
-		if ele.object == common.BKInnerObjIDHost {
-			if err := m.cleanHostAttributeField(ctx, ownerID, ele); err != nil {
-				return err
-			}
-			return nil
-		}
-
-		cond := mapstr.MapStr{
-			common.BKAppIDField: ele.bizID,
-		}
-		cond[common.BkSupplierAccount] = mapstr.MapStr{
-			"$in": []string{ownerID, common.BKDefaultOwnerID},
-		}
-
-		collectionName := common.GetInstTableName(ele.object)
-		wg.Add(1)
-		go func(collName string, filter dal.Filter, fields []string) {
-			defer wg.Done()
-			if err := m.dbProxy.Table(collName).DropColumns(ctx, filter, fields); err != nil {
-				blog.Error("delete object's attribute from instance failed, table: %s, cond: %v, fields: %v, err: %v", collectionName, filter, fields, err)
-				hitError = err
-				return
-			}
-		}(collectionName, cond, ele.fields)
-	}
-	// wait for all the public object routine is done.
-	wg.Wait()
-	if hitError != nil {
-		return hitError
-	}
-
-	return nil
-}
-
-const pageSize = 500
-
-func (m *modelAttribute) cleanHostAttributeField(ctx context.Context, ownerID string, info bizObjectFields) error {
-	cond := mapstr.MapStr{}
-	cond[common.BkSupplierAccount] = mapstr.MapStr{
-		"$in": []string{ownerID, common.BKDefaultOwnerID},
-	}
-	// biz id = 0 means all the hosts.
-	// TODO: optimize when the filed is a public filed in all the host instances. handle with page
-	if info.bizID != 0 {
-		// find hosts in this biz
-		cond = mapstr.MapStr{
-			common.BKAppIDField: info.bizID,
-		}
-	}
-	type hostInst struct {
-		HostID int64 `bson:"bk_host_id"`
-	}
-	hostList := make([]hostInst, 0)
-	err := m.dbProxy.Table(common.BKTableNameModuleHostConfig).Find(cond).Fields(common.BKHostIDField).All(ctx, &hostList)
-	if err != nil {
-		return err
-	}
-	if len(hostList) == 0 {
-		// no host in this business, do not need to clean the filed.
-		return nil
-	}
-
-	count := len(hostList)
-	for start := 0; start < count; start += pageSize {
-		end := start + pageSize
-		if end > count {
-			end = count
-		}
-		ids := make([]int64, 0)
-		for index := start; index < end; index++ {
-			ids = append(ids, hostList[index].HostID)
-		}
-		hostFilter := mapstr.MapStr{
-			common.BKHostIDField: mapstr.MapStr{common.BKDBIN: ids},
-		}
-		if err := m.dbProxy.Table(common.BKTableNameBaseHost).DropColumns(ctx, hostFilter, info.fields); err != nil {
-			return fmt.Errorf("clean host biz attribute %v failed, err: %v", info.fields, err)
-		}
-	}
-
-	return nil
-
-}
-
-// now, we only support set, module, host model's biz attribute clean operation.
-func isBizObject(objectID string) bool {
-	switch objectID {
-	// biz is a special object, but it can not have biz attribute obviously.
-	case common.BKInnerObjIDApp:
-		return true
-	case common.BKInnerObjIDHost:
-		return true
-	case common.BKInnerObjIDModule:
-		return true
-	case common.BKInnerObjIDSet:
-		return true
-	default:
-		// TODO: remove this when the common object support biz attribute and biz instance field.
-		return false
-
-	}
-}
-
 //  saveCheck 新加字段检查
-func (m *modelAttribute) saveCheck(kit *rest.Kit, attribute metadata.Attribute) error {
+func (m *modelAttribute) saveCheck(ctx core.ContextParams, attribute metadata.Attribute) error {
 
-	if err := m.checkAddField(kit, attribute); err != nil {
+	if err := m.checkAddField(ctx, attribute); err != nil {
 		return err
 	}
 
-	if err := m.checkAttributeMustNotEmpty(kit, attribute); err != nil {
+	if err := m.checkAttributeMustNotEmpty(ctx, attribute); err != nil {
 		return err
 	}
-	if err := m.checkAttributeValidity(kit, attribute); err != nil {
+	if err := m.checkAttributeValidity(ctx, attribute); err != nil {
 		return err
 	}
 
 	// check name duplicate
-	if err := m.checkUnique(kit, true, attribute.ObjectID, attribute.PropertyID, attribute.PropertyName, attribute.Metadata); err != nil {
-		blog.ErrorJSON("save attribute check unique err:%s, input:%s, rid:%s", err.Error(), attribute, kit.Rid)
+	if err := m.checkUnique(ctx, true, attribute.ObjectID, attribute.PropertyID, attribute.PropertyName, attribute.Metadata); err != nil {
+		blog.ErrorJSON("save attribute check unique err:%s, input:%s, rid:%s", err.Error(), attribute, ctx.ReqID)
 		return err
 	}
 
@@ -532,15 +297,15 @@ func (m *modelAttribute) saveCheck(kit *rest.Kit, attribute metadata.Attribute) 
 }
 
 // checkUpdate 删除不可以更新字段，检验字段是否重复， 返回更新的行数，错误
-func (m *modelAttribute) checkUpdate(kit *rest.Kit, data mapstr.MapStr, cond universalsql.Condition) (changeRow uint64, err error) {
+func (m *modelAttribute) checkUpdate(ctx core.ContextParams, data mapstr.MapStr, cond universalsql.Condition) (changeRow uint64, err error) {
 
-	dbAttributeArr, err := m.search(kit, cond)
+	dbAttributeArr, err := m.search(ctx, cond)
 	if err != nil {
-		blog.Errorf("request(%s): find nothing by the condition(%#v)  error(%s)", kit.Rid, cond.ToMapStr(), err.Error())
+		blog.Errorf("request(%s): find nothing by the condition(%#v)  error(%s)", ctx.ReqID, cond.ToMapStr(), err.Error())
 		return changeRow, err
 	}
 	if 0 == len(dbAttributeArr) {
-		blog.Errorf("request(%s): find nothing by the condition(%#v)", kit.Rid, cond.ToMapStr())
+		blog.Errorf("request(%s): find nothing by the condition(%#v)", ctx.ReqID, cond.ToMapStr())
 		return changeRow, nil
 	}
 
@@ -565,8 +330,8 @@ func (m *modelAttribute) checkUpdate(kit *rest.Kit, data mapstr.MapStr, cond uni
 		})
 		// 出现编辑预定义属性的字段
 		if hasNotAllowField {
-			blog.ErrorJSON("update model predefined attribute,input:%s, attr info:%s, rid:%s", cond.ToMapStr(), dbAttributeArr, kit.Rid)
-			return changeRow, kit.CCError.Error(common.CCErrCoreServiceNotUpdatePredefinedAttrErr)
+			blog.ErrorJSON("update model predefined attribute,input:%s, attr info:%s, rid:%s", cond.ToMapStr(), dbAttributeArr, ctx.ReqID)
+			return changeRow, ctx.Error.Error(common.CCErrCoreServiceNotUpdatePredefinedAttrErr)
 		}
 	}
 
@@ -584,21 +349,21 @@ func (m *modelAttribute) checkUpdate(kit *rest.Kit, data mapstr.MapStr, cond uni
 
 	attribute := metadata.Attribute{}
 	if err = data.MarshalJSONInto(&attribute); err != nil {
-		blog.Errorf("request(%s): MarshalJSONInto(%#v), error is %v", kit.Rid, data, err)
+		blog.Errorf("request(%s): MarshalJSONInto(%#v), error is %v", ctx.ReqID, data, err)
 		return changeRow, err
 	}
 
-	if err = m.checkAttributeValidity(kit, attribute); err != nil {
+	if err = m.checkAttributeValidity(ctx, attribute); err != nil {
 		return changeRow, err
 	}
 
 	for _, dbAttribute := range dbAttributeArr {
-		err = m.checkUnique(kit, false, dbAttribute.ObjectID, dbAttribute.PropertyID, attribute.PropertyName, attribute.Metadata)
+		err = m.checkUnique(ctx, false, dbAttribute.ObjectID, dbAttribute.PropertyID, attribute.PropertyName, attribute.Metadata)
 		if err != nil {
-			blog.ErrorJSON("save attribute check unique err:%s, input:%s, rid:%s", err.Error(), attribute, kit.Rid)
+			blog.ErrorJSON("save attribute check unique err:%s, input:%s, rid:%s", err.Error(), attribute, ctx.ReqID)
 			return changeRow, err
 		}
-		if err = m.checkChangeField(kit, dbAttribute, data); err != nil {
+		if err = m.checkChangeField(ctx, dbAttribute, data); err != nil {
 			return changeRow, err
 		}
 	}
@@ -608,7 +373,7 @@ func (m *modelAttribute) checkUpdate(kit *rest.Kit, data mapstr.MapStr, cond uni
 }
 
 // checkAttributeInUnique 检查属性是否存在唯一校验中  objIDPropertyIDArr  属性的bk_obj_id和表中ID的集合
-func (m *modelAttribute) checkAttributeInUnique(kit *rest.Kit, objIDPropertyIDArr map[string][]int64) (bool, error) {
+func (m *modelAttribute) checkAttributeInUnique(ctx core.ContextParams, objIDPropertyIDArr map[string][]int64) (bool, error) {
 
 	cond := mongo.NewCondition()
 
@@ -622,12 +387,12 @@ func (m *modelAttribute) checkAttributeInUnique(kit *rest.Kit, objIDPropertyIDAr
 	}
 
 	cond.Or(orCondArr...)
-	condMap := util.SetQueryOwner(cond.ToMapStr(), kit.SupplierAccount)
+	condMap := util.SetQueryOwner(cond.ToMapStr(), ctx.SupplierAccount)
 
-	cnt, err := m.dbProxy.Table(common.BKTableNameObjUnique).Find(condMap).Count(kit.Ctx)
+	cnt, err := m.dbProxy.Table(common.BKTableNameObjUnique).Find(condMap).Count(ctx)
 	if err != nil {
-		blog.ErrorJSON("checkAttributeInUnique db select error. err:%s, cond:%s, rid:%s", err.Error(), condMap, kit.Rid)
-		return false, kit.CCError.Error(common.CCErrCommDBSelectFailed)
+		blog.ErrorJSON("checkAttributeInUnique db select error. err:%s, cond:%s, rid:%s", err.Error(), condMap, ctx.ReqID)
+		return false, ctx.Error.Error(common.CCErrCommDBSelectFailed)
 	}
 
 	if cnt > 0 {
@@ -638,17 +403,17 @@ func (m *modelAttribute) checkAttributeInUnique(kit *rest.Kit, objIDPropertyIDAr
 }
 
 // checkAddRequireField 新加模型属性的时候，如果新加的是必填字段，需要判断是否可以新加必填字段
-func (m *modelAttribute) checkAddField(kit *rest.Kit, attribute metadata.Attribute) error {
-	langObjID := m.getLangObjID(kit, attribute.ObjectID)
+func (m *modelAttribute) checkAddField(ctx core.ContextParams, attribute metadata.Attribute) error {
+	langObjID := m.getLangObjID(ctx, attribute.ObjectID)
 	if _, ok := notAddAttrModel[attribute.ObjectID]; ok {
 		//  不允许新加字段的模型
-		return kit.CCError.Errorf(common.CCErrCoreServiceNotAllowAddFieldErr, langObjID)
+		return ctx.Error.Errorf(common.CCErrCoreServiceNotAllowAddFieldErr, langObjID)
 	}
 
 	if _, ok := RequiredFieldUnchangeableModels[attribute.ObjectID]; ok {
 		if attribute.IsRequired {
 			//  不允许修改必填字段的模型
-			return kit.CCError.Errorf(common.CCErrCoreServiceNotAllowAddRequiredFieldErr, langObjID)
+			return ctx.Error.Errorf(common.CCErrCoreServiceNotAllowAddRequiredFieldErr, langObjID)
 		}
 
 	}
@@ -656,90 +421,28 @@ func (m *modelAttribute) checkAddField(kit *rest.Kit, attribute metadata.Attribu
 }
 
 // 修改模型属性的时候，如果修改的属性包含是否为必填字段(isrequired)，需要判断该模型的必填字段是否允许被修改
-func (m *modelAttribute) checkChangeField(kit *rest.Kit, attr metadata.Attribute, attrInfo mapstr.MapStr) error {
-	langObjID := m.getLangObjID(kit, attr.ObjectID)
+func (m *modelAttribute) checkChangeField(ctx core.ContextParams, attr metadata.Attribute, attrInfo mapstr.MapStr) error {
+	langObjID := m.getLangObjID(ctx, attr.ObjectID)
 	if _, ok := RequiredFieldUnchangeableModels[attr.ObjectID]; ok {
 		if attrInfo.Exists(metadata.AttributeFieldIsRequired) {
 			// 不允许修改模型的必填字段
 			val, ok := attrInfo[metadata.AttributeFieldIsRequired].(bool)
 			if !ok {
-				return kit.CCError.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldIsRequired)
+				return ctx.Error.Errorf(common.CCErrCommParamsIsInvalid, metadata.AttributeFieldIsRequired)
 			}
 			if val != attr.IsRequired {
-				return kit.CCError.Errorf(common.CCErrCoreServiceNotAllowChangeRequiredFieldErr, langObjID)
+				return ctx.Error.Errorf(common.CCErrCoreServiceNotAllowChangeRequiredFieldErr, langObjID)
 			}
 		}
 	}
 	return nil
 }
 
-func (m *modelAttribute) getLangObjID(kit *rest.Kit, objID string) string {
+func (m *modelAttribute) getLangObjID(ctx core.ContextParams, objID string) string {
 	langKey := "object_" + objID
-	language := util.GetLanguage(kit.Header)
-	lang := m.language.CreateDefaultCCLanguageIf(language)
-	langObjID := lang.Language(langKey)
+	langObjID := ctx.Lang.Language(langKey)
 	if langObjID == langKey {
 		langObjID = objID
 	}
 	return langObjID
-}
-
-func (m *modelAttribute) buildUpdateAttrIndexReturn(kit *rest.Kit, objID, propertyGroup string) (*metadata.UpdateAttrIndexData, error) {
-	cond := mapstr.MapStr{
-		common.BKObjIDField:         objID,
-		common.BKPropertyGroupField: propertyGroup,
-	}
-	attrs := []metadata.Attribute{}
-	err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond).All(kit.Ctx, &attrs)
-	if nil != err {
-		blog.Errorf("buildUpdateIndexReturn failed, request(%s): database operation is failed, error info is %s", kit.Rid, err.Error())
-		return nil, err
-	}
-
-	count, err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(cond).Count(kit.Ctx)
-	if nil != err {
-		blog.Errorf("buildUpdateIndexReturn failed, request(%s): database operation is failed, error info is %s", kit.Rid, err.Error())
-		return nil, err
-	}
-	info := make([]*metadata.UpdateAttributeIndex, 0)
-	for _, attr := range attrs {
-		idIndex := &metadata.UpdateAttributeIndex{
-			Id:    attr.ID,
-			Index: attr.PropertyIndex,
-		}
-		info = append(info, idIndex)
-	}
-	result := &metadata.UpdateAttrIndexData{
-		Info:  info,
-		Count: count,
-	}
-
-	return result, nil
-}
-
-func (m *modelAttribute) GetAttrLastIndex(kit *rest.Kit, attribute metadata.Attribute) (int64, error) {
-	opt := make(map[string]interface{})
-	opt[common.BKObjIDField] = attribute.ObjectID
-	opt[common.BKPropertyGroupField] = attribute.PropertyGroup
-	opt[common.BkSupplierAccount] = attribute.OwnerID
-	count, err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(opt).Count(kit.Ctx)
-	if err != nil {
-		blog.Error("GetAttrLastIndex, request(%s): database operation is failed, error info is %v", kit.Rid, err)
-		return 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
-	}
-	if count <= 0 {
-		return 0, nil
-	}
-
-	attrs := make([]metadata.Attribute, 0)
-	sortCond := "-bk_property_index"
-	if err := m.dbProxy.Table(common.BKTableNameObjAttDes).Find(opt).Sort(sortCond).Limit(1).All(kit.Ctx, &attrs); err != nil {
-		blog.Error("GetAttrLastIndex, database operation is failed, err: %v, rid: %s", err, kit.Rid)
-        return 0, kit.CCError.Error(common.CCErrCommDBSelectFailed)
-    }
-
-	if len(attrs) <= 0 {
-		return 0, nil
-	}
-	return attrs[0].PropertyIndex + 1, nil
 }

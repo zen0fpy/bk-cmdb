@@ -214,7 +214,7 @@ func (s *service) authFilter(errFunc func() errors.CCErrorIf) func(req *restful.
 			}
 			blog.Warnf("authFilter failed, url: %s, reason: %+v, permissions: %+v, rid: %s", path, decision, permissions, rid)
 			rsp := metadata.BaseResp{
-				Code:        common.CCNoPermission,
+				Code:        9900403,
 				ErrMsg:      errFunc().CreateDefaultCCErrorIf(language).Error(common.CCErrCommAuthNotHavePermission).Error(),
 				Result:      false,
 				Permissions: permissions,

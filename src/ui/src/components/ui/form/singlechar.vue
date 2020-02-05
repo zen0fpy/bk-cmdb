@@ -45,9 +45,6 @@
             },
             handleEnter (value) {
                 this.$emit('enter', value)
-            },
-            focus () {
-                this.$el.querySelector('input').focus()
             }
         }
     }

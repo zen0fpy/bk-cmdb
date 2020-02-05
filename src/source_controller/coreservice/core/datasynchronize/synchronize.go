@@ -15,7 +15,6 @@ package datasynchronize
 import (
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
 	"configcenter/src/source_controller/coreservice/core"
@@ -24,87 +23,87 @@ import (
 
 type SynchronizeManager struct {
 	dbProxy   dal.RDB
-	dependent OperationDependencies
+	dependent OperationDependences
 }
 
 // New create a new model manager instance
-func New(dbProxy dal.RDB, dependent OperationDependencies) core.DataSynchronizeOperation {
+func New(dbProxy dal.RDB, dependent OperationDependences) core.DataSynchronizeOperation {
 	return &SynchronizeManager{
 		dbProxy:   dbProxy,
 		dependent: dependent,
 	}
 }
 
-func (s *SynchronizeManager) SynchronizeInstanceAdapter(kit *rest.Kit, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
+func (s *SynchronizeManager) SynchronizeInstanceAdapter(ctx core.ContextParams, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
 	syncDataAdpater := NewSynchronizeInstanceAdapter(syncData, s.dbProxy)
-	err := syncDataAdpater.PreSynchronizeFilter(kit)
+	err := syncDataAdpater.PreSynchronizeFilter(ctx)
 	if err != nil {
-		blog.Errorf("SynchronizeInstanceAdapter error, err:%s,rid:%s", err.Error(), kit.Rid)
+		blog.Errorf("SynchronizeInstanceAdapter error, err:%s,rid:%s", err.Error(), ctx.ReqID)
 		return nil, err
 	}
-	syncDataAdpater.SaveSynchronize(kit)
-	return syncDataAdpater.GetErrorStringArr(kit)
+	syncDataAdpater.SaveSynchronize(ctx)
+	return syncDataAdpater.GetErrorStringArr(ctx)
 
 }
 
-func (s *SynchronizeManager) SynchronizeModelAdapter(kit *rest.Kit, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
+func (s *SynchronizeManager) SynchronizeModelAdapter(ctx core.ContextParams, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
 	syncDataAdpater := NewSynchronizeModelAdapter(syncData, s.dbProxy)
-	err := syncDataAdpater.PreSynchronizeFilter(kit)
+	err := syncDataAdpater.PreSynchronizeFilter(ctx)
 	if err != nil {
 		return nil, err
 	}
-	syncDataAdpater.SaveSynchronize(kit)
-	return syncDataAdpater.GetErrorStringArr(kit)
+	syncDataAdpater.SaveSynchronize(ctx)
+	return syncDataAdpater.GetErrorStringArr(ctx)
 
 }
 
-func (s *SynchronizeManager) SynchronizeAssociationAdapter(kit *rest.Kit, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
+func (s *SynchronizeManager) SynchronizeAssociationAdapter(ctx core.ContextParams, syncData *metadata.SynchronizeParameter) ([]metadata.ExceptionResult, error) {
 	syncDataAdpater := NewSynchronizeAssociationAdapter(syncData, s.dbProxy)
-	err := syncDataAdpater.PreSynchronizeFilter(kit)
+	err := syncDataAdpater.PreSynchronizeFilter(ctx)
 	if err != nil {
 		return nil, err
 	}
-	syncDataAdpater.SaveSynchronize(kit)
-	return syncDataAdpater.GetErrorStringArr(kit)
+	syncDataAdpater.SaveSynchronize(ctx)
+	return syncDataAdpater.GetErrorStringArr(ctx)
 
 }
 
-func (s *SynchronizeManager) Find(kit *rest.Kit, input *metadata.SynchronizeFindInfoParameter) ([]mapstr.MapStr, uint64, error) {
+func (s *SynchronizeManager) Find(ctx core.ContextParams, input *metadata.SynchronizeFindInfoParameter) ([]mapstr.MapStr, uint64, error) {
 	adapter := NewSynchronizeFindAdapter(input, s.dbProxy)
-	return adapter.Find(kit)
+	return adapter.Find(ctx)
 }
 
-func (s *SynchronizeManager) ClearData(kit *rest.Kit, input *metadata.SynchronizeClearDataParameter) error {
+func (s *SynchronizeManager) ClearData(ctx core.ContextParams, input *metadata.SynchronizeClearDataParameter) error {
 
 	adapter := NewClearData(s.dbProxy, input)
 	if input.Sign == "" {
-		blog.Errorf("clearData parameter synchronize_flag illegal, input:%#v,rid:%s", input, kit.Rid)
-		return kit.CCError.Errorf(common.CCErrCommParamsNeedSet, "synchronize_flag")
+		blog.Errorf("clearData parameter synchronize_flag illegal, input:%#v,rid:%s", input, ctx.ReqID)
+		return ctx.Error.Errorf(common.CCErrCommParamsNeedSet, "synchronize_flag")
 	}
 
 	if !input.Legality(common.SynchronizeSignPrefix) {
-		blog.Errorf("clearData parameter illegal, input:%#v,rid:%s", input, kit.Rid)
-		return kit.CCError.Errorf(common.CCErrCommParamsInvalid, input.Sign)
+		blog.Errorf("clearData parameter illegal, input:%#v,rid:%s", input, ctx.ReqID)
+		return ctx.Error.Errorf(common.CCErrCommParamsInvalid, input.Sign)
 	}
-	adapter.clearData(kit)
+	adapter.clearData(ctx)
 	return nil
 }
 
 // SetIdentifierFlag set cmdb synchronize identifier flag
-func (s *SynchronizeManager) SetIdentifierFlag(kit *rest.Kit, input *metadata.SetIdenifierFlag) ([]metadata.ExceptionResult, error) {
+func (s *SynchronizeManager) SetIdentifierFlag(ctx core.ContextParams, input *metadata.SetIdenifierFlag) ([]metadata.ExceptionResult, error) {
 
 	adapter := NewSetIdentifierFlag(s.dbProxy, input)
 	if input.Flag == "" {
-		blog.Errorf("SetIdentifierFlag parameter flag illegal, input:%#v,r id:%s", input, kit.Rid)
-		return nil, kit.CCError.Errorf(common.CCErrCommParamsNeedSet, "flag")
+		blog.Errorf("SetIdentifierFlag parameter flag illegal, input:%#v,r id:%s", input, ctx.ReqID)
+		return nil, ctx.Error.Errorf(common.CCErrCommParamsNeedSet, "flag")
 	}
 	if len(input.IdentifierID) == 0 {
-		blog.Errorf("SetIdentifierFlag parameter identifier_id illegal, identifier_id empty. input:%#v,r id:%s", input, kit.Rid)
-		return nil, kit.CCError.Errorf(common.CCErrCommParamsNeedSet, "identifier_id")
+		blog.Errorf("SetIdentifierFlag parameter identifier_id illegal, identifier_id empty. input:%#v,r id:%s", input, ctx.ReqID)
+		return nil, ctx.Error.Errorf(common.CCErrCommParamsNeedSet, "identifier_id")
 	}
-	ccErr := adapter.Run(kit)
+	ccErr := adapter.Run(ctx)
 	if ccErr != nil {
-		blog.Errorf("SetIdentifierFlag handle logic error. err:%s, input:%#v, rid:%s", ccErr.Error(), input, kit.Rid)
+		blog.Errorf("SetIdentifierFlag handle logic error. err:%s, input:%#v, rid:%s", ccErr.Error(), input, ctx.ReqID)
 		return nil, ccErr
 	}
 	return nil, nil

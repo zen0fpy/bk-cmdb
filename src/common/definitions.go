@@ -33,7 +33,7 @@ const (
 	// BKNoLimit no limit definition
 	BKNoLimit = 999999999
 	// max limit of a page
-	BKMaxPageSize = 1000
+	BKMaxPageSize  = 1000
 
 	// 一次最大操作记录数
 	BKMaxRecordsAtOnce = 2000
@@ -469,8 +469,7 @@ const (
 	BKProcessTemplateIDField = "process_template_id"
 	BKServiceCategoryIDField = "service_category_id"
 
-	BKSetTemplateIDField      = "set_template_id"
-	BKSetTemplateVersionField = "set_template_version"
+	BKSetTemplateIDField = "set_template_id"
 
 	HostApplyRuleIDField = "host_apply_rule_id"
 
@@ -732,9 +731,6 @@ const (
 	// FieldTypeList the lis type
 	FieldTypeList string = "list"
 
-	// FieldTypeOrganization the organization field type
-	FieldTypeOrganization string = "organization"
-
 	// FieldTypeSingleLenChar the single char length limit
 	FieldTypeSingleLenChar int = 256
 
@@ -743,6 +739,12 @@ const (
 
 	//FieldTypeStrictCharRegexp the single char regex expression
 	FieldTypeStrictCharRegexp string = `^[a-zA-Z]\w*$`
+
+	//FieldTypeSingleCharRegexp the single char regex expression
+	FieldTypeSingleCharRegexp string = `^([\w\p{Han}]|[，。？！～、：＃；％＊——……＆·＄（）‘’“”\[\]『』〔〕｛｝【】￥￡♀‖〖〗《》「」:,;\."'\/\\\+\-\s#@\(\)])+$`
+
+	//FieldTypeLongCharRegexp the single char regex expression
+	FieldTypeLongCharRegexp string = `^([\w\p{Han}]|[，。？！～、：＃；％＊——……＆·＄（）‘’“”\[\]『』〔〕｛｝【】￥￡♀‖〖〗《》「」:,;\."'\/\\\+\-\s#@\(\)])+$`
 )
 
 const (
@@ -960,8 +962,7 @@ const (
 )
 
 const (
-	// BKDefaultLoginUserPluginVersion 默认的登录方式
-	BKDefaultLoginUserPluginVersion = "blueking"
+	BKDefaultLoginUserPluginVersion = "self"
 	HTTPCookieBKToken               = "bk_token"
 
 	WEBSessionUinKey           = "username"
@@ -1130,4 +1131,13 @@ const (
 	SyncSetTaskName      = "sync-settemplate2set"
 
 	BKHostState = "bk_state"
+)
+
+// 云同步
+const (
+	CloudSyncTaskID            = "bk_task_id"
+	CloudSyncTaskName          = "bk_task_name"
+	CloudSyncResourceConfirmID = "bk_resource_id"
+	CloudSyncConfirmTime       = "confirm_time"
+	CloudSyncConfirmHistoryID  = "confirm_history_id"
 )

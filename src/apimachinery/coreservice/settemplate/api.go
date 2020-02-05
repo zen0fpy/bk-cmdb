@@ -14,6 +14,7 @@ package settemplate
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/blog"
@@ -26,12 +27,12 @@ func (p *setTemplate) CreateSetTemplate(ctx context.Context, header http.Header,
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.SetTemplate `json:"data"`
 	}{}
-	subPath := "/create/topo/set_template/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/create/topo/set_template/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -52,12 +53,12 @@ func (p *setTemplate) UpdateSetTemplate(ctx context.Context, header http.Header,
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.SetTemplate `json:"data"`
 	}{}
-	subPath := "/update/topo/set_template/%d/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/update/topo/set_template/%d/bk_biz_id/%d/", setTemplateID, bizID)
 
 	err := p.client.Put().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, setTemplateID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -77,12 +78,12 @@ func (p *setTemplate) DeleteSetTemplate(ctx context.Context, header http.Header,
 	ret := struct {
 		metadata.BaseResp `json:",inline"`
 	}{}
-	subPath := "/deletemany/topo/set_template/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/deletemany/topo/set_template/bk_biz_id/%d/", bizID)
 
 	err := p.client.Delete().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -103,11 +104,11 @@ func (p *setTemplate) GetSetTemplate(ctx context.Context, header http.Header, bi
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.SetTemplate `json:"data"`
 	}{}
-	subPath := "/find/topo/set_template/%d/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/find/topo/set_template/%d/bk_biz_id/%d/", setTemplateID, bizID)
 
 	err := p.client.Get().
 		WithContext(ctx).
-		SubResourcef(subPath, setTemplateID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -125,12 +126,12 @@ func (p *setTemplate) GetSetTemplate(ctx context.Context, header http.Header, bi
 
 func (p *setTemplate) ListSetTemplate(ctx context.Context, header http.Header, bizID int64, option metadata.ListSetTemplateOption) (*metadata.MultipleSetTemplateResult, errors.CCErrorCoder) {
 	ret := metadata.ListSetTemplateResult{}
-	subPath := "/findmany/topo/set_template/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/findmany/topo/set_template/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -151,12 +152,12 @@ func (p *setTemplate) CountSetTplInstances(ctx context.Context, header http.Head
 		metadata.BaseResp
 		Data []metadata.CountSetTplInstItem `json:"data"`
 	}{}
-	subPath := "/findmany/topo/set_template/count_instances/bk_biz_id/%d/"
+	subPath := fmt.Sprintf("/findmany/topo/set_template/count_instances/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -183,11 +184,11 @@ func (p *setTemplate) ListSetServiceTemplateRelations(ctx context.Context, heade
 		metadata.BaseResp
 		Data []metadata.SetServiceTemplateRelation `json:"data"`
 	}{}
-	subPath := "/findmany/topo/set_template/%d/bk_biz_id/%d/service_templates"
+	subPath := fmt.Sprintf("/findmany/topo/set_template/%d/bk_biz_id/%d/service_templates", setTemplateID, bizID)
 
 	err := p.client.Get().
 		WithContext(ctx).
-		SubResourcef(subPath, setTemplateID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -208,11 +209,11 @@ func (p *setTemplate) ListSetTplRelatedSvcTpl(ctx context.Context, header http.H
 		metadata.BaseResp
 		Data []metadata.ServiceTemplate `json:"data"`
 	}{}
-	subPath := "/findmany/topo/set_template/%d/bk_biz_id/%d/service_templates"
+	subPath := fmt.Sprintf("/findmany/topo/set_template/%d/bk_biz_id/%d/service_templates", setTemplateID, bizID)
 
 	err := p.client.Get().
 		WithContext(ctx).
-		SubResourcef(subPath, setTemplateID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -232,12 +233,12 @@ func (p *setTemplate) UpdateSetTemplateSyncStatus(ctx context.Context, header ht
 	ret := struct {
 		metadata.BaseResp
 	}{}
-	subPath := "/update/topo/set_template_sync_status/bk_set_id/%d"
+	subPath := fmt.Sprintf("/update/topo/set_template_sync_status/bk_set_id/%d", setID)
 
 	err := p.client.Put().
 		WithContext(ctx).
 		Body(syncStatus).
-		SubResourcef(subPath, setID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -257,7 +258,7 @@ func (p *setTemplate) DeleteSetTemplateSyncStatus(ctx context.Context, header ht
 	ret := struct {
 		metadata.BaseResp
 	}{}
-	subPath := "/deletemany/topo/set_template_sync_status/bk_biz_id/%d"
+	subPath := fmt.Sprintf("/deletemany/topo/set_template_sync_status/bk_biz_id/%d", bizID)
 
 	option := metadata.DeleteSetTemplateSyncStatusOption{
 		SetIDs: setIDs,
@@ -266,7 +267,7 @@ func (p *setTemplate) DeleteSetTemplateSyncStatus(ctx context.Context, header ht
 	err := p.client.Delete().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -287,12 +288,12 @@ func (p *setTemplate) ListSetTemplateSyncStatus(ctx context.Context, header http
 		metadata.BaseResp
 		Data metadata.MultipleSetTemplateSyncStatus
 	}{}
-	subPath := "/findmany/topo/set_template_sync_status/bk_biz_id/%d"
+	subPath := fmt.Sprintf("/findmany/topo/set_template_sync_status/bk_biz_id/%d", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -313,12 +314,12 @@ func (p *setTemplate) ListSetTemplateSyncHistory(ctx context.Context, header htt
 		metadata.BaseResp
 		Data metadata.MultipleSetTemplateSyncStatus
 	}{}
-	subPath := "/findmany/topo/set_template_sync_history/bk_biz_id/%d"
+	subPath := fmt.Sprintf("/findmany/topo/set_template_sync_history/bk_biz_id/%d", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)

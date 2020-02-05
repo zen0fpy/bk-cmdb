@@ -15,14 +15,14 @@ import (
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/condition"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/util"
+	"configcenter/src/source_controller/coreservice/core"
 	"configcenter/src/storage/dal"
 )
 
 type clearDataInterface interface {
-	clearData(kit *rest.Kit)
+	clearData(ctx core.ContextParams)
 }
 
 type clearData struct {
@@ -37,7 +37,7 @@ func NewClearData(dbProxy dal.RDB, input *metadata.SynchronizeClearDataParameter
 	}
 }
 
-func (c *clearData) clearData(kit *rest.Kit) {
+func (c *clearData) clearData(ctx core.ContextParams) {
 
 	versionKey := util.BuildMongoSyncItemField(common.MetaDataSynchronizeVersionField)
 	flagKey := util.BuildMongoSyncItemField(common.MetaDataSynchronizeFlagField)
@@ -47,12 +47,12 @@ func (c *clearData) clearData(kit *rest.Kit) {
 	delConditionParse.Field(flagKey).Eq(c.input.SynchronizeFlag)
 	deleteConditon := delConditionParse.ToMapStr()
 
-	blog.V(5).Infof(" clearData condition:%#v, rid:%s", deleteConditon, kit.Rid)
+	blog.V(5).Infof(" clearData condition:%#v, rid:%s", deleteConditon, ctx.ReqID)
 	tableNameArr := common.AllTables
 	for _, tableName := range tableNameArr {
-		cnt, err := c.dbProxy.Table(tableName).Find(deleteConditon).Count(kit.Ctx)
+		cnt, err := c.dbProxy.Table(tableName).Find(deleteConditon).Count(ctx)
 		if err != nil {
-			blog.Warnf("clearData  find %s table row error, err:%s, condition:%#v, rid:%s", tableName, err.Error(), deleteConditon, kit.Rid)
+			blog.Warnf("clearData  find %s table row error, err:%s, condition:%#v, rid:%s", tableName, err.Error(), deleteConditon, ctx.ReqID)
 			continue
 		}
 		if cnt <= 0 {
@@ -60,9 +60,9 @@ func (c *clearData) clearData(kit *rest.Kit) {
 			continue
 		}
 
-		err = c.dbProxy.Table(tableName).Delete(kit.Ctx, deleteConditon)
+		err = c.dbProxy.Table(tableName).Delete(ctx, deleteConditon)
 		if err != nil {
-			blog.Errorf("clearData  delete %s table row error, err:%s, condition:%#v, rid:%s", tableName, err.Error(), deleteConditon, kit.Rid)
+			blog.Errorf("clearData  delete %s table row error, err:%s, condition:%#v, rid:%s", tableName, err.Error(), deleteConditon, ctx.ReqID)
 		}
 	}
 }

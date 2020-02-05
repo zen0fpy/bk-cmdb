@@ -1,36 +1,38 @@
 <template>
     <div :class="['template-tree', mode]">
         <div class="node-root clearfix">
-            <i class="folder-icon bk-icon icon-down-shape fl"></i>
+            <i class="folder-icon bk-icon icon-down-shape fl" @click="handleCollapse"></i>
             <i class="node-icon fl">{{setName[0]}}</i>
             <span class="root-name" :title="templateName">{{templateName}}</span>
         </div>
-        <ul class="node-children">
-            <li class="node-child clearfix"
-                v-for="(service, index) in services"
-                :key="service.id"
-                :class="{ selected: selected === service.id }"
-                @click="handleChildClick(service)">
-                <i class="node-icon fl">{{moduleName[0]}}</i>
-                <span class="child-options fr" v-if="mode !== 'view'">
-                    <i class="options-view icon icon-cc-show" @click="handleViewService(service)"></i>
-                    <bk-popover v-if="serviceExistHost(service.id)">
-                        <i class="options-delete icon icon-cc-tips-close disabled"></i>
-                        <i18n path="该模块下有主机不可删除" tag="p" class="service-tips" slot="content">
-                            <span place="link" @click="handleGoTopoBusiness">{{$t('跳转查看')}}</span>
-                        </i18n>
-                    </bk-popover>
-                    <i v-else class="options-delete icon icon-cc-tips-close" @click="handleDeleteService(index)"></i>
-                </span>
-                <span class="child-name">{{service.name}}</span>
-            </li>
-            <li class="options-child node-child clearfix"
-                v-if="['create', 'edit'].includes(mode)"
-                @click="handleAddService">
-                <i class="node-icon icon icon-cc-zoom-in fl"></i>
-                <span class="child-name">{{$t('添加服务模板')}}</span>
-            </li>
-        </ul>
+        <cmdb-collapse-transition>
+            <ul class="node-children" v-show="!collapse">
+                <li class="node-child clearfix"
+                    v-for="(service, index) in services"
+                    :key="service.id"
+                    :class="{ selected: selected === service.id }"
+                    @click="handleChildClick(service)">
+                    <i class="node-icon fl">{{moduleName[0]}}</i>
+                    <span class="child-options fr" v-if="mode !== 'view'">
+                        <i class="options-view icon icon-cc-show" @click="handleViewService(service)"></i>
+                        <bk-popover v-if="serviceExistHost(service.id)">
+                            <i class="options-delete icon icon-cc-tips-close disabled"></i>
+                            <i18n path="该模块下有主机不可删除" tag="p" class="service-tips" slot="content">
+                                <span place="link" @click="handleGoTopoBusiness">{{$t('跳转查看')}}</span>
+                            </i18n>
+                        </bk-popover>
+                        <i v-else class="options-delete icon icon-cc-tips-close" @click="handleDeleteService(index)"></i>
+                    </span>
+                    <span class="child-name">{{service.name}}</span>
+                </li>
+                <li class="options-child node-child clearfix"
+                    v-if="['create', 'edit'].includes(mode)"
+                    @click="handleAddService">
+                    <i class="node-icon icon icon-cc-zoom-in fl"></i>
+                    <span class="child-name">{{$t('添加服务模板')}}</span>
+                </li>
+            </ul>
+        </cmdb-collapse-transition>
         <bk-dialog
             header-position="left"
             :draggable="false"
@@ -69,6 +71,7 @@
                 templateName: this.$t('模板集群名称'),
                 services: [],
                 originalServices: [],
+                collapse: false,
                 selected: null,
                 unwatch: null,
                 dialog: {
@@ -175,6 +178,9 @@
                     }
                 }, { immediate: true })
             },
+            handleCollapse () {
+                this.collapse = !this.collapse
+            },
             handleChildClick (service) {
                 if (this.mode === 'view') {
                     return false
@@ -270,6 +276,7 @@
             text-align: center;
             font-size: 12px;
             color: $iconColor;
+            cursor: pointer;
         }
         .root-name {
             display: block;

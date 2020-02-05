@@ -91,7 +91,6 @@ func (client *HttpClient) SetTlsVerityConfig(tlsConf *tls.Config) {
 
 func (client *HttpClient) NewTransPort() *http.Transport {
 	return &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
 		TLSHandshakeTimeout: 5 * time.Second,
 		Dial: (&net.Dialer{
 			Timeout:   5 * time.Second,

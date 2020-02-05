@@ -4,8 +4,7 @@
         v-model="selected"
         :clearable="false"
         :disabled="disabled"
-        :placeholder="placeholder"
-        ref="selector">
+        :placeholder="placeholder">
         <bk-option
             v-for="(option, index) in timezoneList"
             :key="index"
@@ -63,11 +62,6 @@
         },
         created () {
             this.selected = this.value ? this.value : 'Asia/Shanghai'
-        },
-        methods: {
-            focus () {
-                this.$refs.selector.show()
-            }
         }
     }
 </script>

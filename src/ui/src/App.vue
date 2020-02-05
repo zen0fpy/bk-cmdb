@@ -64,6 +64,7 @@
             }
         },
         mounted () {
+            this.$store.commit('setFeatureTipsParams')
             // addResizeListener(this.$refs.mainScroller, execMainResizeListener)
             addResizeListener(this.$el, this.calculateAppHeight)
             window.permissionModal = this.$refs.permissionModal

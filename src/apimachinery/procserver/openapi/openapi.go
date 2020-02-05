@@ -14,6 +14,7 @@ package openapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/mapstr"
@@ -22,12 +23,12 @@ import (
 
 func (p *openapi) GetProcessPortByApplicationID(ctx context.Context, appID string, h http.Header, dat []mapstr.MapStr) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/openapi/GetProcessPortByApplicationID/%s"
+	subPath := fmt.Sprintf("/openapi/GetProcessPortByApplicationID/%s", appID)
 
 	err = p.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath, appID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -41,7 +42,7 @@ func (p *openapi) GetProcessPortByIP(ctx context.Context, h http.Header, dat map
 	err = p.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)

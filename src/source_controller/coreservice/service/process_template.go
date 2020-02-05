@@ -17,143 +17,127 @@ import (
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) CreateProcessTemplate(ctx *rest.Contexts) {
+func (s *coreService) CreateProcessTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	template := metadata.ProcessTemplate{}
-	if err := ctx.DecodeInto(&template); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&template, data); err != nil {
+		blog.Errorf("CreateProcessTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.ProcessOperation().CreateProcessTemplate(ctx.Kit, template)
+	result, err := s.core.ProcessOperation().CreateProcessTemplate(params, template)
 	if err != nil {
-		blog.Errorf("CreateProcessTemplate failed, err: %+v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("CreateProcessTemplate failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) GetProcessTemplate(ctx *rest.Contexts) {
-	processTemplateIDStr := ctx.Request.PathParameter(common.BKProcessTemplateIDField)
+func (s *coreService) GetProcessTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	processTemplateIDStr := pathParams(common.BKProcessTemplateIDField)
 	if len(processTemplateIDStr) == 0 {
-		blog.Errorf("GetProcessTemplate failed, path parameter `%s` empty, rid: %s", processTemplateIDStr, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
+		blog.Errorf("GetProcessTemplate failed, path parameter `%s` empty, rid: %s", processTemplateIDStr, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
 	processTemplateID, err := strconv.ParseInt(processTemplateIDStr, 10, 64)
 	if err != nil {
-		blog.Errorf("GetProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
+		blog.Errorf("GetProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
-	result, err := s.core.ProcessOperation().GetProcessTemplate(ctx.Kit, processTemplateID)
+	result, err := s.core.ProcessOperation().GetProcessTemplate(params, processTemplateID)
 	if err != nil {
-		blog.Errorf("GetProcessTemplate failed, err: %+v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("GetProcessTemplate failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) ListProcessTemplates(ctx *rest.Contexts) {
+func (s *coreService) ListProcessTemplates(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	// filter parameter
 	fp := metadata.ListProcessTemplatesOption{}
-	if err := ctx.DecodeInto(&fp); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&fp, data); err != nil {
+		blog.Errorf("ListProcessTemplates failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
 	if fp.BusinessID == 0 {
-		blog.Errorf("ListServiceTemplates failed, business id can't be empty, bk_biz_id: %d, rid: %s", fp.BusinessID, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		blog.Errorf("ListServiceTemplates failed, business id can't be empty, bk_biz_id: %d, rid: %s", fp.BusinessID, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	result, err := s.core.ProcessOperation().ListProcessTemplates(ctx.Kit, fp)
+	result, err := s.core.ProcessOperation().ListProcessTemplates(params, fp)
 	if err != nil {
-		blog.Errorf("ListProcessTemplates failed, err: %+v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListProcessTemplates failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) UpdateProcessTemplate(ctx *rest.Contexts) {
-	processTemplateIDStr := ctx.Request.PathParameter(common.BKProcessTemplateIDField)
+func (s *coreService) UpdateProcessTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	processTemplateIDStr := pathParams(common.BKProcessTemplateIDField)
 	if len(processTemplateIDStr) == 0 {
-		blog.Errorf("UpdateProcessTemplate failed, path parameter `%s` empty, rid: %s", common.BKProcessTemplateIDField, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
+		blog.Errorf("UpdateProcessTemplate failed, path parameter `%s` empty, rid: %s", common.BKProcessTemplateIDField, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
 	processTemplateID, err := strconv.ParseInt(processTemplateIDStr, 10, 64)
 	if err != nil {
-		blog.Errorf("UpdateProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
-	}
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
-	result, err := s.core.ProcessOperation().UpdateProcessTemplate(ctx.Kit, processTemplateID, data)
-	if err != nil {
-		blog.Errorf("UpdateProcessTemplate failed, err: %+v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("UpdateProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
-	ctx.RespEntity(result)
+	result, err := s.core.ProcessOperation().UpdateProcessTemplate(params, processTemplateID, data)
+	if err != nil {
+		blog.Errorf("UpdateProcessTemplate failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, err
+	}
+
+	return result, nil
 }
 
-func (s *coreService) DeleteProcessTemplate(ctx *rest.Contexts) {
-	processTemplateIDStr := ctx.Request.PathParameter(common.BKProcessTemplateIDField)
+func (s *coreService) DeleteProcessTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	processTemplateIDStr := pathParams(common.BKProcessTemplateIDField)
 	if len(processTemplateIDStr) == 0 {
-		blog.Errorf("DeleteProcessTemplate failed, path parameter `%s` empty, rid: %s", common.BKProcessTemplateIDField, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
+		blog.Errorf("DeleteProcessTemplate failed, path parameter `%s` empty, rid: %s", common.BKProcessTemplateIDField, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
 	processTemplateID, err := strconv.ParseInt(processTemplateIDStr, 10, 64)
 	if err != nil {
-		blog.Errorf("DeleteProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField))
-		return
+		blog.Errorf("DeleteProcessTemplate failed, convert path parameter %s to int failed, value: %s, err: %v, rid: %s", common.BKProcessTemplateIDField, processTemplateIDStr, err, params.ReqID)
+		return nil, params.Error.Errorf(common.CCErrCommParamsInvalid, common.BKProcessTemplateIDField)
 	}
 
-	if err := s.core.ProcessOperation().DeleteProcessTemplate(ctx.Kit, processTemplateID); err != nil {
-		blog.Errorf("DeleteProcessTemplate failed, err: %+v, rid: %s", err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.core.ProcessOperation().DeleteProcessTemplate(params, processTemplateID); err != nil {
+		blog.Errorf("DeleteProcessTemplate failed, err: %+v, rid: %s", err, params.ReqID)
+		return nil, err
 	}
 
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) BatchDeleteProcessTemplate(ctx *rest.Contexts) {
+func (s *coreService) BatchDeleteProcessTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	input := struct {
 		ProcessTemplateIDs []int64 `json:"process_template_ids" field:"process_template_ids"`
 	}{}
 
-	if err := ctx.DecodeInto(&input); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&input, data); err != nil {
+		blog.Errorf("BatchDeleteProcessTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
 	// TODO: replace with batch delete interface
 	for _, id := range input.ProcessTemplateIDs {
-		if err := s.core.ProcessOperation().DeleteProcessTemplate(ctx.Kit, id); err != nil {
-			blog.Errorf("BatchDeleteProcessTemplate failed, templateID: %d, err: %s, rid: %s", id, err.Error(), ctx.Kit.Rid)
-			ctx.RespAutoError(err)
-			return
+		if err := s.core.ProcessOperation().DeleteProcessTemplate(params, id); err != nil {
+			blog.Errorf("BatchDeleteProcessTemplate failed, templateID: %d, err: %s, rid: %s", id, err.Error(), params.ReqID)
+			return nil, err
 		}
 	}
-	ctx.RespEntity(nil)
+	return nil, nil
 }

@@ -13,23 +13,25 @@
 package service
 
 import (
+	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	meta "configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) ListHosts(ctx *rest.Contexts) {
+func (s *coreService) ListHosts(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
 	option := meta.ListHosts{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := data.MarshalJSONInto(&option); err != nil {
+		blog.Errorf("get host module id failed, err: %v, rid: %s", err, params.ReqID)
+		return nil, params.Error.CCError(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	hosts, err := s.core.HostOperation().ListHosts(ctx.Kit, option)
+	hosts, err := s.core.HostOperation().ListHosts(params, option)
 	if err != nil {
-		blog.Errorf("ListHostByTopoNode failed, call host operation failed, err: %s, rid: %s", err.Error(), ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListHostByTopoNode failed, call host operation failed, err: %s, rid: %s", err.Error(), params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(hosts)
+
+	return hosts, nil
 }

@@ -34,7 +34,7 @@ type hostManager struct {
 }
 
 // New create a new model manager instance
-func New(dbProxy dal.RDB, cache *redis.Client, dependent transfer.OperationDependence, hostApplyDependence transfer.HostApplyRuleDependence) core.HostOperation {
+func New(dbProxy dal.RDB, cache *redis.Client, dependent transfer.OperationDependence) core.HostOperation {
 
 	coreMgr := &hostManager{
 		DbProxy:   dbProxy,
@@ -42,7 +42,7 @@ func New(dbProxy dal.RDB, cache *redis.Client, dependent transfer.OperationDepen
 		EventCli:  eventclient.NewClientViaRedis(cache, dbProxy),
 		dependent: dependent,
 	}
-	coreMgr.hostTransfer = transfer.New(dbProxy, cache, coreMgr.EventCli, dependent, hostApplyDependence)
+	coreMgr.hostTransfer = transfer.New(dbProxy, cache, coreMgr.EventCli, dependent)
 	coreMgr.hostSearcher = searcher.New(dbProxy, cache)
 	return coreMgr
 }

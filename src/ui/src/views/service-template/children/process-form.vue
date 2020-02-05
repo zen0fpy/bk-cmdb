@@ -1,6 +1,10 @@
 <template>
     <div class="form-layout">
-        <cmdb-tips class="process-tips">{{$t('添加进程提示')}}</cmdb-tips>
+        <feature-tips
+            class="process-tips"
+            :show-tips="true"
+            :desc="$t('添加进程提示')">
+        </feature-tips>
         <div class="form-groups" ref="formGroups">
             <template v-for="(group, groupIndex) in $sortedGroups">
                 <div class="property-group"
@@ -9,8 +13,8 @@
                     <cmdb-collapse
                         :label="group['bk_group_name']"
                         :collapse.sync="groupState[group['bk_group_id']]">
-                        <ul class="property-list">
-                            <li class="property-item"
+                        <ul class="property-list clearfix">
+                            <li class="property-item fl"
                                 v-for="(property, propertyIndex) in groupedProperties[groupIndex]"
                                 v-if="checkEditable(property)"
                                 :key="propertyIndex">
@@ -32,8 +36,6 @@
                                         :is="`cmdb-form-${property['bk_property_type']}`"
                                         :disabled="getPropertyEditStatus(property)"
                                         :class="{ error: errors.has(property['bk_property_id']) }"
-                                        :unit="property.unit"
-                                        :row="2"
                                         :options="property.option || []"
                                         :data-vv-name="property['bk_property_id']"
                                         :data-vv-as="property['bk_property_name']"
@@ -58,7 +60,7 @@
                     <bk-button slot-scope="{ disabled }"
                         class="button-save"
                         theme="primary"
-                        :disabled="saveDisabled || $loading() || disabled || btnStatus()"
+                        :disabled="saveDisabled || $loading() || disabled"
                         @click="handleSave">
                         {{type === 'create' ? $t('提交') : $t('保存')}}
                     </bk-button>
@@ -73,8 +75,12 @@
 <script>
     import formMixins from '@/mixins/form'
     import RESIZE_EVENTS from '@/utils/resize-events'
+    import featureTips from '@/components/feature-tips/index'
     import { mapGetters, mapMutations } from 'vuex'
     export default {
+        components: {
+            featureTips
+        },
         mixins: [formMixins],
         props: {
             inst: {
@@ -155,10 +161,10 @@
                         if (!['bk_func_name', 'bk_process_name'].includes(property['bk_property_id'])) {
                             property.isLocking = false
                         }
-                        // if (['bind_ip'].includes(property['bk_property_id'])) {
-                        //     property.bk_property_type = 'enum'
-                        //     property.option = this.ipOption
-                        // }
+                        if (['bind_ip'].includes(property['bk_property_id'])) {
+                            property.bk_property_type = 'enum'
+                            property.option = this.ipOption
+                        }
                     })
                     return filterProperties
                 })
@@ -198,18 +204,14 @@
             },
             changedValues () {
                 const changedValues = {}
-                if (!Object.keys(this.refrenceValues).length) return {}
                 if (!this.values['bind_ip']['value']) {
                     this.$set(this.values.bind_ip, 'value', '')
                     this.$set(this.refrenceValues.bind_ip, 'value', '')
                 }
                 Object.keys(this.values).forEach(propertyId => {
-                    let isChange = false
-                    if (!['sign_id', 'process_id'].includes(propertyId)) {
-                        isChange = Object.keys(this.values[propertyId]).some(key => {
-                            return JSON.stringify(this.values[propertyId][key]) !== JSON.stringify(this.refrenceValues[propertyId][key])
-                        })
-                    }
+                    const isChange = Object.keys(this.values[propertyId]).some(key => {
+                        return JSON.stringify(this.values[propertyId][key]) !== JSON.stringify(this.refrenceValues[propertyId][key])
+                    })
                     if (isChange) {
                         changedValues[propertyId] = this.values[propertyId]
                     }
@@ -218,9 +220,6 @@
             },
             hasChange () {
                 return !!Object.keys(this.changedValues()).length
-            },
-            btnStatus () {
-                return this.type === 'create' ? false : !this.hasChange()
             },
             checkScrollbar () {
                 const $layout = this.$el
@@ -238,14 +237,7 @@
                         }
                     })
                 }
-                const properties = this.properties.map(property => {
-                    if (['bind_ip'].includes(property['bk_property_id'])) {
-                        property.bk_property_type = 'enum'
-                        property.option = this.ipOption
-                    }
-                    return property
-                })
-                const formValues = this.$tools.getInstFormValues(properties, inst, this.type === 'create')
+                const formValues = this.$tools.getInstFormValues(this.properties, inst)
                 Object.keys(formValues).forEach(key => {
                     this.$set(this.values, key, {
                         value: formValues[key],
@@ -298,17 +290,17 @@
             },
             handleSave () {
                 this.$validator.validateAll().then(result => {
-                    if (result && !this.hasChange()) {
+                    if (!this.hasChange()) {
                         this.$emit('on-cancel')
-                    } else if (result && this.isCreatedService) {
-                        const cloneValues = this.$tools.clone(this.values)
-                        const formatValue = this.$parent.$parent.formatSubmitData(cloneValues)
-                        if (this.type === 'create' && !this.hasProcessName(formatValue)) {
+                        return
+                    }
+                    if (result && this.isCreatedService) {
+                        if (this.type === 'create' && !this.hasProcessName(this.values)) {
                             this.values['sign_id'] = new Date().getTime()
-                            this.addLocalProcessTemplate(formatValue)
+                            this.addLocalProcessTemplate(this.values)
                             this.$emit('on-cancel')
                         } else if (this.type === 'update') {
-                            this.updateLocalProcessTemplate(formatValue)
+                            this.updateLocalProcessTemplate(this.values)
                             this.$emit('on-cancel')
                         } else {
                             this.$bkMessage({
@@ -391,13 +383,10 @@
     }
     .property-list{
         padding: 4px 0;
-        display: flex;
-        flex-wrap: wrap;
         .property-item{
             width: 50%;
             margin: 12px 0 0;
             font-size: 12px;
-            flex: 0 0 50%;
             &:nth-child(odd) {
                 padding-right: 30px;
             }
@@ -415,19 +404,16 @@
                 position: relative;
                 display: inline-block;
                 vertical-align: middle;
-                padding: 0 6px 0 0;
+                padding: 0 14px 0 0;
                 font-size: 14px;
                 @include ellipsis;
-                &.required {
-                    padding: 0 14px 0 0;
-                    &:after {
-                        position: absolute;
-                        left: 100%;
-                        top: 0;
-                        margin: 0 0 0 -10px;
-                        content: "*";
-                        color: #ff5656;
-                    }
+                &.required:after{
+                    position: absolute;
+                    left: 100%;
+                    top: 0;
+                    margin: 0 0 0 -10px;
+                    content: "*";
+                    color: #ff5656;
                 }
             }
             .property-name-tooltips{
@@ -439,7 +425,9 @@
                 color: #c3cdd7;
             }
             .property-value{
-                font-size: 0;
+                height: 32px;
+                line-height: 32px;
+                font-size: 12px;
                 position: relative;
                 /deep/ .control-append-group {
                     .bk-input-text {
@@ -459,7 +447,6 @@
         width: 100%;
         padding: 28px 32px 0;
         font-size: 0;
-        z-index: 101;
         &.sticky {
             padding: 10px 32px;
             border-top: 1px solid $cmdbBorderColor;

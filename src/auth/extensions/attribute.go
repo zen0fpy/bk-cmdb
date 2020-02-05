@@ -14,7 +14,6 @@ package extensions
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -35,7 +34,7 @@ func (am *AuthManager) collectAttributesByAttributeIDs(ctx context.Context, head
 	// get model by objID
 	cond := condition.CreateCondition().Field(common.BKFieldID).In(attributeIDs)
 	queryCond := &metadata.QueryCondition{Condition: cond.ToMapStr()}
-	resp, err := am.clientSet.CoreService().Model().ReadModelAttrByCondition(ctx, header, queryCond)
+	resp, err := am.clientSet.CoreService().Instance().ReadInstance(ctx, header, common.BKTableNameObjAttDes, queryCond)
 	if err != nil {
 		return nil, fmt.Errorf("get attribute by id: %+v failed, err: %+v", attributeIDs, err)
 	}
@@ -49,15 +48,10 @@ func (am *AuthManager) collectAttributesByAttributeIDs(ctx context.Context, head
 	attributes := make([]metadata.Attribute, 0)
 	for _, item := range resp.Data.Info {
 		attribute := metadata.Attribute{}
-		data, err := json.Marshal(item)
+		_, err := attribute.Parse(item)
 		if err != nil {
-			blog.ErrorJSON("collectAttributesByAttributeIDs %s failed, parse attribute %s failed, err: %s, rid: %s", attributeIDs, item, err, rid)
-			return nil, fmt.Errorf("collectAttributesByAttributeIDs marshel json %+v failed, err: %+v", item, err)
-		}
-		err = json.Unmarshal(data, &attribute)
-		if err != nil {
-			blog.Errorf("collectAttributesByAttributeIDs %+v failed, parse attribute %s failed, err: %s, rid: %s", attributeIDs, string(data), err, rid)
-			return nil, fmt.Errorf("collectAttributesByAttributeIDs unmarshel json %s failed, err: %+v", string(data), err)
+			blog.Errorf("collectAttributesByAttributeIDs %+v failed, parse attribute %+v failed, err: %+v, rid: %s", attributeIDs, item, err, rid)
+			return nil, fmt.Errorf("parse attribute from db data failed, err: %+v", err)
 		}
 		attributes = append(attributes, attribute)
 	}
@@ -132,7 +126,7 @@ func (am *AuthManager) makeResourceByAttributes(ctx context.Context, header http
 		object := objectMap[attribute.ObjectID]
 
 		// check obj's group id in map
-		if _, exist := classificationMap[object.ObjCls]; !exist {
+		if _, exist := classificationMap[object.ObjCls]; exist == false {
 			blog.V(3).Infof("authorization failed, get classification by object failed, err: bk_classification_id not exist, rid: %s", rid)
 			return nil, fmt.Errorf("authorization failed, get classification by object failed, err: bk_classification_id not exist")
 		}
@@ -173,7 +167,7 @@ func (am *AuthManager) makeResourceByAttributes(ctx context.Context, header http
 }
 
 func (am *AuthManager) RegisterModelAttribute(ctx context.Context, header http.Header, attributes ...metadata.Attribute) error {
-	if !am.Enabled() {
+	if am.Enabled() == false {
 		return nil
 	}
 
@@ -181,7 +175,7 @@ func (am *AuthManager) RegisterModelAttribute(ctx context.Context, header http.H
 		return nil
 	}
 
-	if !am.RegisterModelAttributeEnabled {
+	if am.RegisterModelAttributeEnabled == false {
 		return nil
 	}
 
@@ -194,7 +188,7 @@ func (am *AuthManager) RegisterModelAttribute(ctx context.Context, header http.H
 }
 
 func (am *AuthManager) DeregisterModelAttribute(ctx context.Context, header http.Header, attributes ...metadata.Attribute) error {
-	if !am.Enabled() {
+	if am.Enabled() == false {
 		return nil
 	}
 
@@ -202,7 +196,7 @@ func (am *AuthManager) DeregisterModelAttribute(ctx context.Context, header http
 		return nil
 	}
 
-	if !am.RegisterModelAttributeEnabled {
+	if am.RegisterModelAttributeEnabled == false {
 		return nil
 	}
 
@@ -215,7 +209,7 @@ func (am *AuthManager) DeregisterModelAttribute(ctx context.Context, header http
 }
 
 func (am *AuthManager) DeregisterModelAttributeByID(ctx context.Context, header http.Header, attributeIDs ...int64) error {
-	if !am.Enabled() {
+	if am.Enabled() == false {
 		return nil
 	}
 
@@ -223,7 +217,7 @@ func (am *AuthManager) DeregisterModelAttributeByID(ctx context.Context, header 
 		return nil
 	}
 
-	if !am.RegisterModelAttributeEnabled {
+	if am.RegisterModelAttributeEnabled == false {
 		return nil
 	}
 
@@ -235,7 +229,7 @@ func (am *AuthManager) DeregisterModelAttributeByID(ctx context.Context, header 
 }
 
 func (am *AuthManager) UpdateRegisteredModelAttribute(ctx context.Context, header http.Header, attributes ...metadata.Attribute) error {
-	if !am.Enabled() {
+	if am.Enabled() == false {
 		return nil
 	}
 
@@ -243,7 +237,7 @@ func (am *AuthManager) UpdateRegisteredModelAttribute(ctx context.Context, heade
 		return nil
 	}
 
-	if !am.RegisterModelAttributeEnabled {
+	if am.RegisterModelAttributeEnabled == false {
 		return nil
 	}
 
@@ -256,7 +250,7 @@ func (am *AuthManager) UpdateRegisteredModelAttribute(ctx context.Context, heade
 }
 
 func (am *AuthManager) UpdateRegisteredModelAttributeByID(ctx context.Context, header http.Header, attributeIDs ...int64) error {
-	if !am.Enabled() {
+	if am.Enabled() == false {
 		return nil
 	}
 
@@ -264,7 +258,7 @@ func (am *AuthManager) UpdateRegisteredModelAttributeByID(ctx context.Context, h
 		return nil
 	}
 
-	if !am.RegisterModelAttributeEnabled {
+	if am.RegisterModelAttributeEnabled == false {
 		return nil
 	}
 

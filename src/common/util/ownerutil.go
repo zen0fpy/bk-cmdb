@@ -14,32 +14,92 @@ package util
 
 import (
 	"configcenter/src/common"
+	"configcenter/src/common/blog"
+	"configcenter/src/common/mapstr"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
-// SetQueryOwner returns condition that in default ownerID and request ownerID
-func SetQueryOwner(condition map[string]interface{}, ownerID string) map[string]interface{} {
+// SetQueryOwner returns condition that in default ownerid and request ownerid
+func SetQueryOwner(condition interface{}, ownerID string) map[string]interface{} {
 	if nil == condition {
-		condition = make(map[string]interface{})
+		if ownerID == common.BKSuperOwnerID {
+			return map[string]interface{}{}
+		}
+		return map[string]interface{}{
+			common.BKOwnerIDField: map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, ownerID}},
+		}
 	}
+
+	var ret map[string]interface{}
+	switch cond := condition.(type) {
+	case map[string]interface{}:
+		ret = cond
+	case mapstr.MapStr:
+		ret = cond
+	default:
+		out, err := bson.Marshal(condition)
+		if err != nil {
+			blog.Errorf("SetModOwner failed condition %#v, error %s", condition, err.Error())
+		}
+		ret = map[string]interface{}{}
+		err = bson.Unmarshal(out, &ret)
+		if err != nil {
+			blog.Errorf("SetModOwner failed condition %#v, error %s", condition, err.Error())
+		}
+	}
+
 	if ownerID == common.BKSuperOwnerID {
-		return condition
+		return ret
 	}
-	if ownerID == common.BKDefaultOwnerID {
-		condition[common.BKOwnerIDField] = common.BKDefaultOwnerID
-		return condition
+
+	if nil == ret {
+		return map[string]interface{}{
+			common.BKOwnerIDField: map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, ownerID}},
+		}
 	}
-	condition[common.BKOwnerIDField] = map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, ownerID}}
-	return condition
+	ret[common.BKOwnerIDField] = map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, ownerID}}
+	return ret
 }
 
 // SetModOwner set condition equal owner id, the condition must be a map or struct
-func SetModOwner(condition map[string]interface{}, ownerID string) map[string]interface{} {
+func SetModOwner(condition interface{}, ownerID string) map[string]interface{} {
 	if nil == condition {
-		condition = make(map[string]interface{})
+		if ownerID == common.BKSuperOwnerID {
+			return map[string]interface{}{}
+		}
+		return map[string]interface{}{
+			common.BKOwnerIDField: ownerID,
+		}
 	}
+
+	var ret map[string]interface{}
+	switch cond := condition.(type) {
+	case map[string]interface{}:
+		ret = cond
+	case mapstr.MapStr:
+		ret = cond
+	case common.KvMap:
+		ret = cond
+	default:
+		out, err := bson.Marshal(condition)
+		if err != nil {
+			blog.Errorf("SetModOwner failed condition %#v, error %s", condition, err.Error())
+		}
+		ret = map[string]interface{}{}
+		err = bson.Unmarshal(out, &ret)
+		if err != nil {
+			blog.Errorf("SetModOwner failed condition %#v, error %s", condition, err.Error())
+		}
+	}
+
 	if ownerID == common.BKSuperOwnerID {
-		return condition
+		return ret
 	}
-	condition[common.BKOwnerIDField] = ownerID
-	return condition
+	if nil == ret {
+		return map[string]interface{}{common.BKOwnerIDField: ownerID}
+	}
+	ret[common.BKOwnerIDField] = ownerID
+
+	return ret
 }

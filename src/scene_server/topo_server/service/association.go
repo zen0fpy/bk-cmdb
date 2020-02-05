@@ -225,11 +225,7 @@ func (s *Service) searchBusinessTopo(params types.ContextParams, pathParams, que
 		return nil, err
 	}
 
-	withDefault := false
-	if len(queryParams("with_default")) > 0 {
-		withDefault = true
-	}
-	topoInstRst, err := s.Core.AssociationOperation().SearchMainlineAssociationInstTopo(params, bizObj, id, withStatistics, withDefault)
+	topoInstRst, err := s.Core.AssociationOperation().SearchMainlineAssociationInstTopo(params, bizObj, id, withStatistics)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +267,7 @@ func (s *Service) SearchMainLineChildInstTopo(params types.ContextParams, pathPa
 		return nil, err
 	}
 
-	return s.Core.AssociationOperation().SearchMainlineAssociationInstTopo(params, obj, instID, false, false)
+	return s.Core.AssociationOperation().SearchMainlineAssociationInstTopo(params, obj, instID, false)
 }
 
 func (s *Service) SearchAssociationType(params types.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {

@@ -4,21 +4,18 @@
             :tips-style="{
                 background: 'none',
                 border: 'none',
-                fontSize: '12px',
-                lineHeight: '30px',
-                padding: 0
+                fontSize: '12px'
             }"
             :icon-style="{
                 color: '#63656E',
-                fontSize: '14px',
-                lineHeight: '30px'
+                fontSize: '14px'
             }">
             {{$t('转移属性变化确认提示')}}
         </cmdb-tips>
-        <property-confirm-table class="mt10"
+        <property-confirm-table
             ref="confirmTable"
-            max-height="auto"
             :list="list"
+            :max-height="600"
             :render-icon="true"
             :show-operation="!!conflictList.length">
         </property-confirm-table>
@@ -26,7 +23,7 @@
 </template>
 
 <script>
-    import propertyConfirmTable from '@/components/host-apply/property-confirm-table'
+    import propertyConfirmTable from '@/views/host-apply/children/property-confirm-table.vue'
     export default {
         name: 'host-attrs-auto-apply',
         components: {

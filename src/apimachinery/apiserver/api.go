@@ -15,9 +15,9 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
-	"configcenter/src/apimachinery/rest"
 	"configcenter/src/common"
 	"configcenter/src/common/condition"
 	"configcenter/src/common/mapstr"
@@ -25,18 +25,14 @@ import (
 	"configcenter/src/common/util"
 )
 
-func (a *apiServer) Client() rest.ClientInterface {
-	return a.client
-}
-
 func (a *apiServer) AddDefaultApp(ctx context.Context, h http.Header, ownerID string, params mapstr.MapStr) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "biz/default/%s"
+	subPath := fmt.Sprintf("biz/default/%s", ownerID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath, ownerID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -45,12 +41,12 @@ func (a *apiServer) AddDefaultApp(ctx context.Context, h http.Header, ownerID st
 
 func (a *apiServer) SearchDefaultApp(ctx context.Context, h http.Header, ownerID string) (resp *metadata.QueryInstResult, err error) {
 	resp = new(metadata.QueryInstResult)
-	subPath := "biz/default/%s/search"
+	subPath := fmt.Sprintf("biz/default/%s/search", ownerID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, ownerID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -59,12 +55,12 @@ func (a *apiServer) SearchDefaultApp(ctx context.Context, h http.Header, ownerID
 
 func (a *apiServer) GetObjectData(ctx context.Context, h http.Header, params mapstr.MapStr) (resp *metadata.ObjectAttrBatchResult, err error) {
 	resp = new(metadata.ObjectAttrBatchResult)
-	subPath := "object/search/batch"
+	subPath := fmt.Sprintf("object/search/batch")
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -74,12 +70,12 @@ func (a *apiServer) GetObjectData(ctx context.Context, h http.Header, params map
 func (a *apiServer) GetInstDetail(ctx context.Context, h http.Header, ownerID, objID string, params mapstr.MapStr) (resp *metadata.QueryInstResult, err error) {
 
 	resp = new(metadata.QueryInstResult)
-	subPath := "inst/search/owner/%s/object/%s/detail"
+	subPath := fmt.Sprintf("inst/search/owner/%s/object/%s/detail", ownerID, objID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath, ownerID, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -93,7 +89,7 @@ func (a *apiServer) CreateObjectAtt(ctx context.Context, h http.Header, obj *met
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(obj).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -102,12 +98,12 @@ func (a *apiServer) CreateObjectAtt(ctx context.Context, h http.Header, obj *met
 
 func (a *apiServer) UpdateObjectAtt(ctx context.Context, objID string, h http.Header, data map[string]interface{}) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/objectattr/%s"
+	subPath := fmt.Sprintf("/objectattr/%s", objID)
 
 	err = a.client.Put().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -116,12 +112,12 @@ func (a *apiServer) UpdateObjectAtt(ctx context.Context, objID string, h http.He
 
 func (a *apiServer) DeleteObjectAtt(ctx context.Context, objID string, h http.Header) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/objectattr/%s"
+	subPath := fmt.Sprintf("/objectattr/%s", objID)
 
 	err = a.client.Delete().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -131,12 +127,12 @@ func (a *apiServer) DeleteObjectAtt(ctx context.Context, objID string, h http.He
 func (a *apiServer) GetObjectAttr(ctx context.Context, h http.Header, params mapstr.MapStr) (resp *metadata.ObjectAttrResult, err error) {
 
 	resp = new(metadata.ObjectAttrResult)
-	subPath := "object/attr/search"
+	subPath := fmt.Sprintf("object/attr/search")
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -146,12 +142,12 @@ func (a *apiServer) GetObjectAttr(ctx context.Context, h http.Header, params map
 func (a *apiServer) GetHostData(ctx context.Context, h http.Header, params mapstr.MapStr) (resp *metadata.QueryInstResult, err error) {
 
 	resp = new(metadata.QueryInstResult)
-	subPath := "hosts/search/asstdetail"
+	subPath := fmt.Sprintf("hosts/search/asstdetail")
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -161,11 +157,11 @@ func (a *apiServer) GetHostData(ctx context.Context, h http.Header, params mapst
 func (a *apiServer) GetObjectGroup(ctx context.Context, h http.Header, ownerID, objID string, params mapstr.MapStr) (resp *metadata.ObjectAttrGroupResult, err error) {
 
 	resp = new(metadata.ObjectAttrGroupResult)
-	subPath := "objectatt/group/property/owner/%s/object/%s"
+	subPath := fmt.Sprintf("objectatt/group/property/owner/%s/object/%s", ownerID, objID)
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath, ownerID, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -175,12 +171,12 @@ func (a *apiServer) GetObjectGroup(ctx context.Context, h http.Header, ownerID, 
 func (a *apiServer) AddHost(ctx context.Context, h http.Header, params mapstr.MapStr) (resp *metadata.ResponseDataMapStr, err error) {
 
 	resp = new(metadata.ResponseDataMapStr)
-	subPath := "hosts/add"
+	subPath := fmt.Sprintf("hosts/add")
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -190,12 +186,12 @@ func (a *apiServer) AddHost(ctx context.Context, h http.Header, params mapstr.Ma
 func (a *apiServer) AddInst(ctx context.Context, h http.Header, ownerID, objID string, params mapstr.MapStr) (resp *metadata.ResponseDataMapStr, err error) {
 
 	resp = new(metadata.ResponseDataMapStr)
-	subPath := "inst/%s/%s"
+	subPath := fmt.Sprintf("inst/%s/%s", ownerID, objID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath, ownerID, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -210,7 +206,7 @@ func (a *apiServer) AddObjectBatch(ctx context.Context, h http.Header, ownerID, 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(params).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -224,7 +220,7 @@ func (a *apiServer) SearchAssociationInst(ctx context.Context, h http.Header, re
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(request).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -237,12 +233,12 @@ func (a *apiServer) SearchInsts(ctx context.Context, h http.Header, objID string
 	input := &metadata.SearchAssociationInstRequest{
 		Condition: cond.ToMapStr(),
 	}
-	subPath := "/inst/search/owner/%s/object/%s"
+	subPath := fmt.Sprintf("/inst/search/owner/%s/object/%s", util.GetOwnerID(h), objID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(input).
-		SubResourcef(subPath, util.GetOwnerID(h), objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -252,12 +248,12 @@ func (a *apiServer) SearchInsts(ctx context.Context, h http.Header, objID string
 
 func (a *apiServer) ImportAssociation(ctx context.Context, h http.Header, objID string, input *metadata.RequestImportAssociation) (resp *metadata.ResponeImportAssociation, err error) {
 	resp = new(metadata.ResponeImportAssociation)
-	subPath := "/inst/association/action/%s/import"
+	subPath := fmt.Sprintf("/inst/association/action/%s/import", objID)
 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(input).
-		SubResourcef(subPath, objID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -272,7 +268,7 @@ func (a *apiServer) GetUserAuthorizedBusinessList(ctx context.Context, h http.He
 
 	err := a.client.Get().
 		WithContext(ctx).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -296,7 +292,7 @@ func (a *apiServer) SearchNetCollectDevice(ctx context.Context, h http.Header, c
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(cond).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -312,7 +308,7 @@ func (a *apiServer) SearchNetDeviceProperty(ctx context.Context, h http.Header, 
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(cond).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -328,7 +324,7 @@ func (a *apiServer) SearchNetCollectDeviceBatch(ctx context.Context, h http.Head
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(cond).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -344,7 +340,7 @@ func (a *apiServer) SearchNetDevicePropertyBatch(ctx context.Context, h http.Hea
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(cond).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -360,7 +356,7 @@ func (a *apiServer) ListHostWithoutApp(ctx context.Context, h http.Header, optio
 	err = a.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(&resp)

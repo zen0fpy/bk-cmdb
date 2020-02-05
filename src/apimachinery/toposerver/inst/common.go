@@ -14,6 +14,7 @@ package inst
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/metadata"
@@ -21,12 +22,12 @@ import (
 
 func (t *instanceClient) QueryAudit(ctx context.Context, ownerID string, h http.Header, input *metadata.QueryInput) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/app/%s"
+	subPath := fmt.Sprintf("/app/%s", ownerID)
 
 	err = t.client.Post().
 		WithContext(ctx).
 		Body(input).
-		SubResourcef(subPath, ownerID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -34,12 +35,12 @@ func (t *instanceClient) QueryAudit(ctx context.Context, ownerID string, h http.
 }
 func (t *instanceClient) QueryAuditLog(ctx context.Context, h http.Header, input *metadata.QueryInput) (resp *metadata.Response, err error) {
 	resp = new(metadata.Response)
-	subPath := "/audit/search"
+	subPath := fmt.Sprintf("/audit/search")
 
 	err = t.client.Post().
 		WithContext(ctx).
 		Body(input).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -48,12 +49,12 @@ func (t *instanceClient) QueryAuditLog(ctx context.Context, h http.Header, input
 
 func (t *instanceClient) GetInternalModule(ctx context.Context, ownerID, appID string, h http.Header) (resp *metadata.SearchInnterAppTopoResult, err error) {
 	resp = new(metadata.SearchInnterAppTopoResult)
-	subPath := "/topo/internal/%s/%s"
+	subPath := fmt.Sprintf("/topo/internal/%s/%s", ownerID, appID)
 
 	err = t.client.Get().
 		WithContext(ctx).
 		Body(nil).
-		SubResourcef(subPath, ownerID, appID).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)

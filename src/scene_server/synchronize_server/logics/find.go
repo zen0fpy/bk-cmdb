@@ -70,12 +70,12 @@ func (lgc *Logics) Find(ctx context.Context, input *metadata.SynchronizeFindInfo
 // SynchronizeFindInfoParameterToQuerycondition  SynchronizeFindInfoParameter to Querycondition
 func SynchronizeFindInfoParameterToQuerycondition(input *metadata.SynchronizeFindInfoParameter) *metadata.QueryCondition {
 	ret := &metadata.QueryCondition{
-		Page:      metadata.BasePage{Limit: int(input.Limit), Start: int(input.Start)},
+		Limit:     metadata.SearchLimit{Limit: int64(input.Limit), Offset: int64(input.Start)},
 		Condition: input.Condition,
 	}
-	if ret.Page.Limit <= 0 {
+	if ret.Limit.Limit <= 0 {
 		//  limit
-		ret.Page.Limit = defaultLimit
+		ret.Limit.Limit = defaultLimit
 	}
 	return ret
 }

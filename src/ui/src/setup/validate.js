@@ -130,15 +130,6 @@ const customRules = {
             const list = values.map(text => text.trim()).filter(text => text)
             return values.length === list.length
         }
-    },
-    setNameLen: {
-        validate: (value) => {
-            const nameList = value.split('\n').filter(name => name)
-            for (const name of nameList) {
-                if (stringLength(name) > 256) return false
-            }
-            return true
-        }
     }
 }
 
@@ -176,8 +167,7 @@ const dictionary = {
             setNameMap: () => '集群名称重复',
             emptySetName: () => '请勿输入空白集群名称',
             instanceTagValue: () => '请输入英文 / 数字',
-            instanceTagKey: () => '请输入英文 / 数字, 以英文开头',
-            setNameLen: () => '请输入256个字符以内的内容'
+            instanceTagKey: () => '请输入英文 / 数字, 以英文开头'
         },
         custom: {
             asst: {
@@ -218,8 +208,7 @@ const dictionary = {
             emptySetName: () => 'Do not enter blank Set name',
             instanceTagValue: () => 'Please enter letter / number',
             instanceTagKey: () => 'Please enter letter / number starts with letter',
-            repeatTagKey: () => 'Label key cannot be repeated',
-            setNameLen: () => 'Content length max than 256'
+            repeatTagKey: () => 'Label key cannot be repeated'
         },
         custom: {
             asst: {

@@ -26,15 +26,10 @@
             :max-height="$APP.height - 190"
             @page-change="handlePageChange"
             @page-limit-change="handleSizeChange">
-            <bk-table-column :prop="idMap[objId] || 'bk_inst_id'" label="ID"></bk-table-column>
             <bk-table-column v-for="column in header"
                 :key="column.id"
                 :prop="column.id"
                 :label="column.name">
-                <template slot-scope="{ row }">{{ row[column.id] | formatter(column.property) }}</template>
-            </bk-table-column>
-            <bk-table-column prop="op_time" :label="$t('更新时间')">
-                <template slot-scope="{ row }">{{$tools.formatTime(row.op_time)}}</template>
             </bk-table-column>
         </bk-table>
     </div>
@@ -43,6 +38,11 @@
 <script>
     import { mapGetters, mapActions } from 'vuex'
     import moment from 'moment'
+    import {
+        MENU_RESOURCE_HOST,
+        MENU_RESOURCE_INSTANCE,
+        MENU_RESOURCE_MANAGEMENT
+    } from '@/dictionary/menu-symbol'
     export default {
         data () {
             const startDate = moment().subtract(1, 'month').toDate()
@@ -63,14 +63,7 @@
                 endDate,
                 opTimeResolver: null,
                 defaultDate: [startDate, endDate],
-                ip: '',
-                idMap: {
-                    'host': 'bk_host_id',
-                    'set': 'bk_set_id',
-                    'module': 'bk_module_id',
-                    'biz': 'bk_biz_id',
-                    'plat': 'bk_plat_id'
-                }
+                ip: ''
             }
         },
         computed: {
@@ -173,6 +166,22 @@
             ...mapActions('operationAudit', ['getOperationLog']),
             setBreadcrumbs () {
                 this.$store.commit('setTitle', this.$t('删除历史'))
+                this.$store.commit('setBreadcrumbs', [{
+                    label: this.$t('资源目录'),
+                    route: {
+                        name: MENU_RESOURCE_MANAGEMENT
+                    }
+                }, {
+                    label: this.model.bk_obj_name,
+                    route: {
+                        name: this.objId === 'host' ? MENU_RESOURCE_HOST : MENU_RESOURCE_INSTANCE,
+                        params: {
+                            objId: this.objId
+                        }
+                    }
+                }, {
+                    label: this.$t('删除历史')
+                }])
             },
             back () {
                 this.$router.go(-1)
@@ -186,6 +195,13 @@
                 })
             },
             setTableHeader () {
+                const idMap = {
+                    'host': 'bk_host_id',
+                    'set': 'bk_set_id',
+                    'module': 'bk_module_id',
+                    'biz': 'bk_biz_id',
+                    'plat': 'bk_plat_id'
+                }
                 const fixedPropertyMap = {
                     'host': ['bk_host_innerip', 'bk_cloud_id'],
                     'set': ['bk_set_name'],
@@ -194,13 +210,19 @@
                     'plat': ['bk_plat_name']
                 }
                 const headerProperties = this.$tools.getHeaderProperties(this.properties, this.customColumns, fixedPropertyMap[this.objId] || ['bk_inst_name'])
-                this.header = headerProperties.map(property => {
+                this.header = [{
+                    id: idMap[this.objId] || 'bk_inst_id',
+                    name: 'ID'
+                }].concat(headerProperties.map(property => {
                     return {
                         id: property['bk_property_id'],
-                        name: this.$tools.getHeaderPropertyName(property),
-                        property
+                        name: property['bk_property_name']
                     }
-                })
+                })).concat([{
+                    id: 'op_time',
+                    width: 180,
+                    name: this.$t('更新时间')
+                }])
                 return Promise.resolve(this.header)
             },
             setFilterTime (daterange) {
@@ -221,10 +243,10 @@
                         const list = log.info.map(data => {
                             return {
                                 ...(data.content['cur_data'] ? data.content['cur_data'] : data.content['pre_data']),
-                                'op_time': data.op_time
+                                'op_time': this.$tools.formatTime(data['op_time'])
                             }
                         })
-                        this.list = list
+                        this.list = this.$tools.flattenList(this.properties, list)
                     } catch (e) {
                         this.list = []
                         this.$error(e.message)
@@ -261,7 +283,7 @@
 
 <style lang="scss" scoped>
     .history-layout{
-        padding: 15px 20px 0;
+        padding: 0 20px;
     }
     .history-options{
         font-size: 0px;
@@ -272,7 +294,7 @@
         }
     }
     .history-table{
-        margin-top: 15px;
+        margin-top: 20px;
     }
 
 </style>

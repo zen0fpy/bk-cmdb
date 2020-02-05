@@ -13,142 +13,131 @@
 package service
 
 import (
+	"configcenter/src/common/mapstruct"
 	"strconv"
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/rest"
-	"configcenter/src/common/mapstruct"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/core"
 )
 
-func (s *coreService) CreateSetTemplate(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) CreateSetTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
 	option := metadata.CreateSetTemplateOption{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&option, data); err != nil {
+		blog.Errorf("CreateSetTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.SetTemplateOperation().CreateSetTemplate(ctx.Kit, bizID, option)
+	result, err := s.core.SetTemplateOperation().CreateSetTemplate(params, bizID, option)
 	if err != nil {
-		blog.Errorf("CreateSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("CreateSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) UpdateSetTemplate(ctx *rest.Contexts) {
-	setTemplateIDStr := ctx.Request.PathParameter(common.BKSetTemplateIDField)
+func (s *coreService) UpdateSetTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	setTemplateIDStr := pathParams(common.BKSetTemplateIDField)
 	setTemplateID, err := strconv.ParseInt(setTemplateIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField)
 	}
 
 	option := metadata.UpdateSetTemplateOption{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&option, data); err != nil {
+		blog.Errorf("UpdateSetTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	result, err := s.core.SetTemplateOperation().UpdateSetTemplate(ctx.Kit, setTemplateID, option)
+	result, err := s.core.SetTemplateOperation().UpdateSetTemplate(params, setTemplateID, option)
 	if err != nil {
-		blog.Errorf("UpdateSetTemplate failed, setTemplateID: %d, option: %+v, err: %+v, rid: %s", setTemplateID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("UpdateSetTemplate failed, setTemplateID: %d, option: %+v, err: %+v, rid: %s", setTemplateID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) DeleteSetTemplate(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) DeleteSetTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
 	option := metadata.DeleteSetTemplateOption{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&option, data); err != nil {
+		blog.Errorf("DeleteSetTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	if err := s.core.SetTemplateOperation().DeleteSetTemplate(ctx.Kit, bizID, option); err != nil {
-		blog.Errorf("UpdateSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.core.SetTemplateOperation().DeleteSetTemplate(params, bizID, option); err != nil {
+		blog.Errorf("UpdateSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) GetSetTemplate(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) GetSetTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	setTemplateIDStr := ctx.Request.PathParameter(common.BKSetTemplateIDField)
+	setTemplateIDStr := pathParams(common.BKSetTemplateIDField)
 	setTemplateID, err := strconv.ParseInt(setTemplateIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField)
 	}
 
-	setTemplate, err := s.core.SetTemplateOperation().GetSetTemplate(ctx.Kit, bizID, setTemplateID)
+	setTemplate, err := s.core.SetTemplateOperation().GetSetTemplate(params, bizID, setTemplateID)
 	if err != nil {
-		blog.Errorf("GetSetTemplate failed, bizID: %d, setTemplateID: %d, err: %+v, rid: %s", bizID, setTemplateID, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("GetSetTemplate failed, bizID: %d, setTemplateID: %d, err: %+v, rid: %s", bizID, setTemplateID, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(setTemplate)
+	return setTemplate, nil
 }
 
-func (s *coreService) ListSetTemplate(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListSetTemplate(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
 	option := metadata.ListSetTemplateOption{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&option, data); err != nil {
+		blog.Errorf("ListSetTemplate failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	setTemplateResult, err := s.core.SetTemplateOperation().ListSetTemplate(ctx.Kit, bizID, option)
+	setTemplateResult, err := s.core.SetTemplateOperation().ListSetTemplate(params, bizID, option)
 	if err != nil {
-		blog.Errorf("ListSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListSetTemplate failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(setTemplateResult)
+	return setTemplateResult, nil
 }
 
-func (s *coreService) CountSetTplInstances(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) CountSetTplInstances(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
 	option := metadata.CountSetTplInstOption{}
-	if err := ctx.DecodeInto(&option); err != nil {
-		ctx.RespAutoError(err)
-		return
+	if err := mapstr.DecodeFromMapStr(&option, data); err != nil {
+		blog.Errorf("CountSetTplInstances failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
 	filter := map[string]interface{}{
@@ -165,180 +154,142 @@ func (s *coreService) CountSetTplInstances(ctx *rest.Contexts) {
 		},
 	}
 	result := make([]metadata.CountSetTplInstItem, 0)
-	if err := s.db.Table(common.BKTableNameBaseSet).AggregateAll(ctx.Kit.Ctx, pipeline, &result); err != nil {
+	if err := s.db.Table(common.BKTableNameBaseSet).AggregateAll(params.Context, pipeline, &result); err != nil {
 		if s.db.IsNotFoundError(err) == true {
 			result = make([]metadata.CountSetTplInstItem, 0)
 		} else {
-			blog.Errorf("CountSetTplInstances failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-			ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommDBSelectFailed))
+			blog.Errorf("CountSetTplInstances failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+			return result, params.Error.Error(common.CCErrCommDBSelectFailed)
 		}
 	}
 
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) ListSetServiceTemplateRelations(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListSetServiceTemplateRelations(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	setTemplateIDStr := ctx.Request.PathParameter(common.BKSetTemplateIDField)
+	setTemplateIDStr := pathParams(common.BKSetTemplateIDField)
 	setTemplateID, err := strconv.ParseInt(setTemplateIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField)
 	}
 
-	relations, err := s.core.SetTemplateOperation().ListSetServiceTemplateRelations(ctx.Kit, bizID, setTemplateID)
+	relations, err := s.core.SetTemplateOperation().ListSetServiceTemplateRelations(params, bizID, setTemplateID)
 	if err != nil {
-		blog.Errorf("ListSetServiceTemplateRelations failed, bizID: %d, setTemplateID: %+v, err: %+v, rid: %s", bizID, setTemplateID, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListSetServiceTemplateRelations failed, bizID: %d, setTemplateID: %+v, err: %+v, rid: %s", bizID, setTemplateID, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(relations)
+	return relations, nil
 }
 
-func (s *coreService) ListSetTplRelatedSvcTpl(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListSetTplRelatedSvcTpl(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	setTemplateIDStr := ctx.Request.PathParameter(common.BKSetTemplateIDField)
+	setTemplateIDStr := pathParams(common.BKSetTemplateIDField)
 	setTemplateID, err := strconv.ParseInt(setTemplateIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetTemplateIDField)
 	}
 
-	serviceTemplates, err := s.core.SetTemplateOperation().ListSetTplRelatedSvcTpl(ctx.Kit, bizID, setTemplateID)
+	serviceTemplates, err := s.core.SetTemplateOperation().ListSetTplRelatedSvcTpl(params, bizID, setTemplateID)
 	if err != nil {
-		blog.Errorf("ListSetTplRelatedSvcTpl failed, bizID: %d, setTemplateID: %d, err: %s, rid: %s", bizID, setTemplateID, err.Error(), ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListSetTplRelatedSvcTpl failed, bizID: %d, setTemplateID: %d, err: %s, rid: %s", bizID, setTemplateID, err.Error(), params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(serviceTemplates)
+	return serviceTemplates, nil
 }
 
-func (s *coreService) UpdateSetTemplateSyncStatus(ctx *rest.Contexts) {
-	setIDStr := ctx.Request.PathParameter(common.BKSetIDField)
+func (s *coreService) UpdateSetTemplateSyncStatus(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	setIDStr := pathParams(common.BKSetIDField)
 	setID, err := strconv.ParseInt(setIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKSetIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.SetTemplateSyncStatus{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("UpdateSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("UpdateSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 
-	if err := s.core.SetTemplateOperation().UpdateSetTemplateSyncStatus(ctx.Kit, setID, option); err != nil {
-		blog.Errorf("UpdateSetTemplateSyncStatus failed, setID: %d, option: %+v, err: %+v, rid: %s", setID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+	if err := s.core.SetTemplateOperation().UpdateSetTemplateSyncStatus(params, setID, option); err != nil {
+		blog.Errorf("UpdateSetTemplateSyncStatus failed, setID: %d, option: %+v, err: %+v, rid: %s", setID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(nil)
+	return nil, nil
 }
 
-func (s *coreService) ListSetTemplateSyncStatus(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListSetTemplateSyncStatus(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.ListSetTemplateSyncStatusOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("ListSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("ListSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 	option.BizID = bizID
 
-	result, err := s.core.SetTemplateOperation().ListSetTemplateSyncStatus(ctx.Kit, option)
+	result, err := s.core.SetTemplateOperation().ListSetTemplateSyncStatus(params, option)
 	if err != nil {
-		blog.Errorf("ListSetTemplateSyncStatus failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListSetTemplateSyncStatus failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) ListSetTemplateSyncHistory(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) ListSetTemplateSyncHistory(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.ListSetTemplateSyncStatusOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("ListSetTemplateSyncHistory failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("ListSetTemplateSyncHistory failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 	option.BizID = bizID
 
-	result, err := s.core.SetTemplateOperation().ListSetTemplateSyncHistory(ctx.Kit, option)
+	result, err := s.core.SetTemplateOperation().ListSetTemplateSyncHistory(params, option)
 	if err != nil {
-		blog.Errorf("ListSetTemplateSyncHistory failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("ListSetTemplateSyncHistory failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, err, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(result)
+	return result, nil
 }
 
-func (s *coreService) DeleteSetTemplateSyncStatus(ctx *rest.Contexts) {
-	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+func (s *coreService) DeleteSetTemplateSyncStatus(params core.ContextParams, pathParams, queryParams ParamsGetter, data mapstr.MapStr) (interface{}, error) {
+	bizIDStr := pathParams(common.BKAppIDField)
 	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
 	if err != nil {
-		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
-		return
+		return nil, params.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField)
 	}
 
-	data := make(map[string]interface{})
-	if err := ctx.DecodeInto(&data); nil != err {
-		ctx.RespAutoError(err)
-		return
-	}
 	option := metadata.DeleteSetTemplateSyncStatusOption{}
 	if err := mapstruct.Decode2Struct(data, &option); err != nil {
-		blog.Errorf("DeleteSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, ctx.Kit.Rid)
-		ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
-		return
+		blog.Errorf("DeleteSetTemplateSyncStatus failed, decode request body failed, body: %+v, err: %v, rid: %s", data, err, params.ReqID)
+		return nil, params.Error.Error(common.CCErrCommJSONUnmarshalFailed)
 	}
 	option.BizID = bizID
 
-	ccErr := s.core.SetTemplateOperation().DeleteSetTemplateSyncStatus(ctx.Kit, option)
+	ccErr := s.core.SetTemplateOperation().DeleteSetTemplateSyncStatus(params, option)
 	if ccErr != nil {
-		blog.Errorf("DeleteSetTemplateSyncStatus failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, ccErr, ctx.Kit.Rid)
-		ctx.RespAutoError(err)
-		return
+		blog.Errorf("DeleteSetTemplateSyncStatus failed, bizID: %d, option: %+v, err: %+v, rid: %s", bizID, option, ccErr, params.ReqID)
+		return nil, err
 	}
-	ctx.RespEntity(nil)
+	return nil, nil
 }

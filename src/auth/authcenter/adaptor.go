@@ -145,10 +145,9 @@ func ConvertResourceType(resourceType meta.ResourceType, businessID int64) (*Res
 		iamResourceType = BizTopology
 	case meta.SetTemplate:
 		iamResourceType = BizSetTemplate
+
 	case meta.OperationStatistic:
 		iamResourceType = SysOperationStatistic
-	case meta.HostApply:
-		iamResourceType = BizHostApply
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -188,7 +187,6 @@ const (
 	BizProcessServiceCategory ResourceTypeID = "biz_process_service_category"
 	BizProcessServiceInstance ResourceTypeID = "biz_process_service_instance"
 	BizSetTemplate            ResourceTypeID = "biz_set_template"
-	BizHostApply              ResourceTypeID = "biz_host_apply"
 )
 
 const (
@@ -200,7 +198,7 @@ var ResourceTypeIDMap = map[ResourceTypeID]string{
 	SysBusinessInstance: "业务",
 	SysHostInstance:     "主机",
 	SysEventPushing:     "事件推送",
-	SysModelGroup:       "模型分组",
+	SysModelGroup:       "模型分级",
 	SysModel:            "模型",
 	SysInstance:         "实例",
 	SysAssociationType:  "关联类型",
@@ -220,7 +218,6 @@ var ResourceTypeIDMap = map[ResourceTypeID]string{
 	BizProcessServiceInstance: "服务实例",
 	BizSetTemplate:            "集群模板",
 	SysOperationStatistic:     "运营统计",
-	BizHostApply:              "主机属性自动应用",
 }
 
 type ActionID string
@@ -441,7 +438,7 @@ func AdoptPermissions(h http.Header, api apimachinery.ClientSetInterface, rs []m
 		rsc.ResourceType = string(*rscType)
 		rsc.ResourceTypeName = ResourceTypeIDMap[*rscType]
 		if len(rscIDs) != 0 {
-			rsc.ResourceID = rscIDs[len(rscIDs)-1].ResourceID
+			rsc.ResourceID = rscIDs[0].ResourceID
 		}
 		rsc.ResourceName = r.Basic.Name
 		p.Resources = [][]metadata.Resource{{rsc}}

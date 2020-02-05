@@ -41,12 +41,7 @@
                     </template>
                 </cmdb-auth>
                 <div class="label-list fl">
-                    <div class="label-item"
-                        style="cursor: pointer;"
-                        v-for="(label, index) in labelShowList"
-                        :title="`${label.key}：${label.value}`"
-                        :key="index"
-                        @click="handleFilterByLabel(label)">
+                    <div class="label-item" :title="`${label.key}：${label.value}`" :key="index" v-for="(label, index) in labelShowList">
                         <span>{{label.key}}</span>
                         <span>:</span>
                         <span>{{label.value}}</span>
@@ -58,13 +53,7 @@
                         placement="bottom-end">
                         <span>...</span>
                         <div class="tips-label-list" slot="content">
-                            <span
-                                class="label-item"
-                                style="cursor: pointer;"
-                                v-for="(label, index) in labelTipsList"
-                                :title="`${label.key}：${label.value}`"
-                                :key="index"
-                                @click="handleFilterByLabel(label)">
+                            <span class="label-item" :title="`${label.key}：${label.value}`" :key="index" v-for="(label, index) in labelTipsList">
                                 <span>{{label.key}}</span>
                                 <span>:</span>
                                 <span>{{label.value}}</span>
@@ -77,14 +66,12 @@
         <bk-table
             v-show="localExpanded"
             v-bkloading="{ isLoading: $loading(Object.values(requestId)) }"
-            :data="list">
+            :data="flattenList">
             <bk-table-column v-for="column in header"
                 :key="column.id"
                 :prop="column.id"
                 :label="column.name">
-                <div slot-scope="{ row }" :title="(row.property || {})[column.id] | formatter(column.property)">
-                    {{(row.property || {})[column.id] | formatter(column.property)}}
-                </div>
+                <div slot-scope="{ row }" :title="row[column.id]">{{row[column.id]}}</div>
             </bk-table-column>
             <bk-table-column :label="$t('操作')">
                 <template slot-scope="{ row }">
@@ -167,7 +154,6 @@
 
 <script>
     import cmdbEditLabel from './edit-label.vue'
-    import { MENU_BUSINESS_DELETE_SERVICE } from '@/dictionary/menu-symbol'
     export default {
         components: { cmdbEditLabel },
         props: {
@@ -230,6 +216,9 @@
                     })
                 }
                 return menu
+            },
+            flattenList () {
+                return this.$tools.flattenList(this.properties, this.list.map(data => data.property || {}))
             },
             requestId () {
                 return {
@@ -317,8 +306,7 @@
                     const property = this.properties.find(property => property.bk_property_id === id) || {}
                     return {
                         id: property.bk_property_id,
-                        name: this.$tools.getHeaderPropertyName(property),
-                        property
+                        name: property.bk_property_name
                     }
                 })
                 this.header = header
@@ -327,7 +315,8 @@
                 this.$emit('create-process', this)
             },
             async handleEditProcess (item) {
-                this.$emit('update-process', item, this)
+                const processInstance = this.list.find(data => data.relation.bk_process_id === item.bk_process_id)
+                this.$emit('update-process', processInstance, this)
             },
             async handleDeleteProcess (item) {
                 try {
@@ -335,7 +324,7 @@
                         serviceInstanceId: this.instance.id,
                         config: {
                             data: this.$injectMetadata({
-                                process_instance_ids: [item.relation.bk_process_id]
+                                process_instance_ids: [item.bk_process_id]
                             }, { injectBizId: true })
                         }
                     })
@@ -355,17 +344,34 @@
                         moduleId: this.currentNode.data.bk_inst_id
                     },
                     query: {
-                        title: this.instance.name,
-                        node: this.currentNode.id
+                        title: this.instance.name
                     }
                 })
             },
             handleDeleteInstance () {
-                this.$router.push({
-                    name: MENU_BUSINESS_DELETE_SERVICE,
-                    params: {
-                        ids: this.instance.id,
-                        moduleId: this.currentNode.data.bk_inst_id
+                this.$bkInfo({
+                    title: this.$t('确认删除实例'),
+                    subTitle: this.$t('即将删除实例', { name: this.instance.name }),
+                    extCls: 'bk-dialog-sub-header-center',
+                    confirmFn: async () => {
+                        try {
+                            await this.$store.dispatch('serviceInstance/deleteServiceInstance', {
+                                config: {
+                                    data: this.$injectMetadata({
+                                        service_instance_ids: [this.instance.id]
+                                    }, { injectBizId: true }),
+                                    requestId: this.requestId.deleteProcess
+                                }
+                            })
+                            this.currentNode.data.service_instance_count = this.currentNode.data.service_instance_count - 1
+                            this.currentNode.parents.forEach(node => {
+                                node.data.service_instance_count = node.data.service_instance_count - 1
+                            })
+                            this.$success(this.$t('删除成功'))
+                            this.$emit('delete-instance', this.instance.id)
+                        } catch (e) {
+                            console.error(e)
+                        }
                     }
                 })
             },
@@ -456,26 +462,6 @@
             },
             handleHideDotMenu () {
                 this.$refs.dotMenu.$el.style.opacity = 0
-            },
-            handleFilterByLabel (label) {
-                this.$parent.searchSelectData = [{
-                    condition: {
-                        id: label.key,
-                        name: label.key + ' : '
-                    },
-                    disabled: false,
-                    id: 1,
-                    name: `${this.$t('标签')}(value)`,
-                    values: [{
-                        id: label.value,
-                        name: label.value
-                    }]
-                }]
-                this.$set(this.$parent.searchSelect[1], 'children', [{
-                    id: label.value,
-                    name: label.value
-                }])
-                this.$parent.handleSearch()
             }
         }
     }

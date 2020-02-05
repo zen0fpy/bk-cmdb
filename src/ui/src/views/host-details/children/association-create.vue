@@ -36,7 +36,6 @@
                 :key="column.id"
                 :prop="column.id"
                 :label="column.name">
-                <template slot-scope="{ row }">{{row[column.id] | formatter(column.property)}}</template>
             </bk-table-column>
             <bk-table-column :label="$t('操作')">
                 <template slot-scope="{ row }">
@@ -272,19 +271,15 @@
             setTableHeader (propertyId) {
                 const header = [{
                     id: this.instanceIdKey,
-                    name: 'ID',
-                    property: 'singlechar'
+                    name: 'ID'
                 }, {
                     id: this.instanceNameKey,
-                    name: this.instanceName,
-                    property: 'singlechar'
+                    name: this.instanceName
                 }]
                 if (propertyId && propertyId !== this.instanceNameKey) {
-                    const property = this.getProperty(propertyId) || {}
                     header.push({
                         id: propertyId,
-                        name: this.$tools.getHeaderPropertyName(property),
-                        property: property
+                        name: (this.getProperty(propertyId) || {})['bk_property_name']
                     })
                 }
                 this.table.header = header
@@ -581,7 +576,7 @@
                 if (asstObjId === this.objId) {
                     data.info = data.info.filter(item => item[this.instanceIdKey] !== this.instId)
                 }
-                this.table.list = data.info
+                this.table.list = data.info.map(item => this.$tools.flattenItem(this.properties, item))
             },
             getProperty (propertyId) {
                 return this.properties.find(({ bk_property_id: bkPropertyId }) => bkPropertyId === propertyId)

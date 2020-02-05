@@ -32,7 +32,8 @@ import (
 
 func (lgc *Logics) GetResourcePoolModuleID(ctx context.Context, condition mapstr.MapStr) (int64, errors.CCError) {
 	query := &metadata.QueryCondition{
-		Page:      metadata.BasePage{Start: 0, Limit: 1, Sort: common.BKModuleIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: 1},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKModuleIDField).ToSearchSortArr(),
 		Fields:    []string{common.BKModuleIDField},
 		Condition: condition,
 	}
@@ -56,7 +57,8 @@ func (lgc *Logics) GetResourcePoolModuleID(ctx context.Context, condition mapstr
 
 func (lgc *Logics) GetNormalModuleByModuleID(ctx context.Context, appID, moduleID int64) ([]mapstr.MapStr, errors.CCError) {
 	query := &metadata.QueryCondition{
-		Page:      metadata.BasePage{Start: 0, Limit: 1, Sort: common.BKModuleIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: 1},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKModuleIDField).ToSearchSortArr(),
 		Fields:    []string{common.BKModuleIDField},
 		Condition: hutil.NewOperation().WithAppID(appID).WithModuleID(moduleID).Data(),
 	}
@@ -77,12 +79,12 @@ func (lgc *Logics) GetNormalModuleByModuleID(ctx context.Context, appID, moduleI
 func (lgc *Logics) GetModuleIDByCond(ctx context.Context, cond []metadata.ConditionItem) ([]int64, errors.CCError) {
 	condc := make(map[string]interface{})
 	if err := parse.ParseCommonParams(cond, condc); err != nil {
-		blog.Errorf("ParseCommonParams failed, err: %+v, rid: %s", err, lgc.rid)
-		return nil, lgc.ccErr.Errorf(common.CCErrCommUtilHandleFail, "parse condition", err.Error())
+		blog.Warnf("ParseCommonParams failed, err: %+v, rid: %s", err, lgc.rid)
 	}
 
 	query := &metadata.QueryCondition{
-		Page:      metadata.BasePage{Start: 0, Limit: common.BKNoLimit, Sort: common.BKModuleIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: common.BKNoLimit},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKModuleIDField).ToSearchSortArr(),
 		Fields:    []string{common.BKModuleIDField},
 		Condition: mapstr.NewFromMap(condc),
 	}
@@ -113,7 +115,8 @@ func (lgc *Logics) GetModuleMapByCond(ctx context.Context, fields []string, cond
 
 	query := &metadata.QueryCondition{
 		Condition: cond,
-		Page:      metadata.BasePage{Start: 0, Limit: common.BKNoLimit, Sort: common.BKModuleIDField},
+		Limit:     metadata.SearchLimit{Offset: 0, Limit: common.BKNoLimit},
+		SortArr:   metadata.NewSearchSortParse().String(common.BKModuleIDField).ToSearchSortArr(),
 		Fields:    fields,
 	}
 

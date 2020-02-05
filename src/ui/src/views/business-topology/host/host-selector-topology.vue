@@ -15,7 +15,6 @@
                 :style="{
                     'min-width': `calc(100% + ${deepestExpandedLevel * 60}px)`
                 }"
-                :filter-method="filterMethod"
                 @node-click="handleNodeClick"
                 @check-change="handleCheckedChange"
                 @expand-change="handleExpandChange">
@@ -41,7 +40,7 @@
             clearable
             left-icon="icon-search"
             :placeholder="$t('筛选')"
-            v-model.trim="filter">
+            v-model="filter">
         </bk-input>
     </div>
 </template>
@@ -53,7 +52,6 @@
         data () {
             return {
                 filter: '',
-                filterMethod: this.defaultFilterMethod,
                 expandedNodes: [],
                 handleFilter: () => ({}),
                 hostMap: {},
@@ -73,9 +71,6 @@
             deepestExpandedLevel () {
                 const maxLevel = Math.max.apply(null, [0, ...this.expandedNodes.map(node => node.level)])
                 return Math.max(4, maxLevel) - 4
-            },
-            limitDisplay () {
-                return !!this.$parent.displayNodes.length
             }
         },
         watch: {
@@ -88,33 +83,14 @@
         },
         created () {
             this.handleFilter = debounce(() => {
-                this.$refs.tree.filter(this.limitDisplay ? (this.filter || Symbol('any')) : this.filter)
-                this.recaculateLine()
+                this.$refs.tree.filter(this.filter)
             }, 300)
-            this.filterMethod = this.limitDisplay ? this.displayNodesFilterMethod : this.defaultFilterMethod
             this.initTopology()
         },
         activated () {
             this.filter = ''
         },
         methods: {
-            defaultFilterMethod (keyword, node) {
-                return String(node.name).toLowerCase().indexOf(keyword) > -1
-            },
-            displayNodesFilterMethod (keyword, node) {
-                const displayNodes = this.$parent.displayNodes
-                if (this.filter) {
-                    return node.data.bk_obj_id === 'host' && node.name.indexOf(keyword) > -1
-                }
-                return displayNodes.includes(node.id) || node.data.bk_obj_id === 'host'
-            },
-            recaculateLine () {
-                if (this.limitDisplay) {
-                    const tree = this.$refs.tree
-                    const displayNodes = this.$parent.displayNodes
-                    tree.needsCalculateNodes.push(...displayNodes.map(id => tree.getNodeById(id)))
-                }
-            },
             syncState (current, previous) {
                 const unselectHost = previous.filter(prev => {
                     const exist = current.some(cur => cur.host.bk_host_id === prev.host.bk_host_id)
@@ -153,15 +129,10 @@
                         }))
                     }
                     children.unshift(idlePool)
+                    const defaultNodeId = this.getNodeId(topology[0])
                     this.$refs.tree.setData(topology)
+                    this.$refs.tree.setExpanded(defaultNodeId)
                     this.syncState(this.$parent.selected, [])
-                    if (this.limitDisplay) {
-                        this.$refs.tree.filter(Symbol('ignore'))
-                        this.$refs.tree.setExpanded(this.$parent.displayNodes)
-                    } else {
-                        const defaultNodeId = this.getNodeId(topology[0])
-                        this.$refs.tree.setExpanded(defaultNodeId)
-                    }
                 } catch (e) {
                     console.error(e)
                 }
@@ -186,7 +157,7 @@
                 return `${data.bk_obj_id}-${data.bk_inst_id}`
             },
             shouldShowCheckbox (data) {
-                return data.bk_obj_id === 'host' || (data.bk_obj_id === 'module' && data.child && data.child.length > 0)
+                return data.bk_obj_id === 'host'
             },
             async loadHost (node) {
                 try {

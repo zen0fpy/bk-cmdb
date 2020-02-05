@@ -116,7 +116,7 @@
                 :fixed="column.id === 'bk_host_innerip'"
                 :class-name="column.id === 'bk_host_innerip' ? 'is-highlight' : ''">
                 <template slot-scope="{ row }">
-                    {{ row | hostValueFilter(column.objId, column.id) | formatter(column.type, getPropertyValue(column.objId, column.id, 'option'))}}
+                    {{ row | hostValueFilter(column.objId, column.id) | formatter(column.type, getPropertyValue(column.objId, column.id, 'option')) | addUnit(getPropertyValue(column.objId, column.id, 'unit')) }}
                 </template>
             </bk-table-column>
             <cmdb-table-empty slot="empty" :stuff="table.stuff"></cmdb-table-empty>
@@ -198,7 +198,13 @@
             cmdbHostFilter
         },
         filters: {
-            hostValueFilter
+            hostValueFilter,
+            addUnit (value, unit) {
+                if (value === '--' || !unit) {
+                    return value
+                }
+                return value + unit
+            }
         },
         props: {
             columnsConfigProperties: {
@@ -300,7 +306,6 @@
             }
         },
         computed: {
-            ...mapState('userCustom', ['globalUsercustom']),
             ...mapGetters(['supplierAccount']),
             ...mapGetters('userCustom', ['usercustom']),
             ...mapState('hosts', ['collectionList', 'isHostSearch']),
@@ -312,9 +317,6 @@
             },
             customColumns () {
                 return this.usercustom[this.columnsConfigKey] || []
-            },
-            globalCustomColumns () {
-                return this.globalUsercustom['host_global_custom_table_columns'] || []
             },
             clipboardList () {
                 return this.table.header.filter(header => header.type !== 'checkbox')
@@ -366,7 +368,6 @@
                 }
                 if (this.isHostSearch) {
                     this.scope = 'all'
-                    this.$store.commit('hosts/setIsHostSearch', false)
                 }
             } catch (e) {
                 console.log(e)
@@ -495,12 +496,11 @@
                 this.$refs.hostFilter.handleToggleFilter()
             },
             setTableHeader () {
-                const customColumns = this.customColumns.length ? this.customColumns : this.globalCustomColumns
-                const properties = this.$tools.getHeaderProperties(this.columnsConfigProperties, customColumns, this.columnsConfigDisabledColumns)
+                const properties = this.$tools.getHeaderProperties(this.columnsConfigProperties, this.customColumns, this.columnsConfigDisabledColumns)
                 this.table.header = properties.map(property => {
                     return {
                         id: property.bk_property_id,
-                        name: this.$tools.getHeaderPropertyName(property),
+                        name: property.bk_property_name,
                         type: property.bk_property_type,
                         objId: property.bk_obj_id,
                         sortable: property.bk_obj_id === 'host' && !['foreignkey'].includes(property.bk_property_type)

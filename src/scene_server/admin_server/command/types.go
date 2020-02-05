@@ -154,7 +154,6 @@ type BKServiceTemplate struct {
 	// ServiceCategoryName,服务分类转换成分类ID
 	ServiceCategoryID int64    `json:"-"`
 	BindProcess       []string `json:"bind_proc"`
-	BindProcessUUID   []string `json:"bind_proc_uuid"`
 }
 
 // BKBizTopo business set,module

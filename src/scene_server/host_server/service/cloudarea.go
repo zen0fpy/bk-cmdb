@@ -15,6 +15,7 @@ package service
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"configcenter/src/auth/extensions"
 	authmeta "configcenter/src/auth/meta"
@@ -47,34 +48,45 @@ func (s *Service) FindManyCloudArea(req *restful.Request, resp *restful.Response
 
 	if input.Page.IsIllegal() {
 		blog.Errorf("FindManyCloudArea failed, parse plat page illegal, input:%#v,rid:%s", input, rid)
-		_ = resp.WriteError(http.StatusBadRequest, &metadata.RespError{Msg: srvData.ccErr.Error(common.CCErrCommPageLimitIsExceeded)})
+		resp.WriteError(http.StatusBadRequest, &metadata.RespError{Msg: srvData.ccErr.Error(common.CCErrCommPageLimitIsExceeded)})
 		return
 	}
 
-	filter := input.Condition
-	if s.AuthManager.Enabled() && !s.AuthManager.SkipReadAuthorization {
-		// auth: get authorized resources
-		authorizedPlatIDs, err := s.AuthManager.ListAuthorizedPlatIDs(srvData.ctx, srvData.user)
-		if err != nil {
-			blog.Errorf("FindManyCloudArea failed, ListAuthorizedPlatIDs failed, user: %s, err: %+v, rid: %s", srvData.user, err, rid)
-			_ = resp.WriteError(http.StatusForbidden, &metadata.RespError{Msg: srvData.ccErr.Error(common.CCErrCommListAuthorizedResourceFromIAMFailed)})
-			return
+	sortArr := make([]metadata.SearchSort, 0)
+	if len(input.Page.Sort) != 0 {
+		for _, field := range strings.Split(input.Page.Sort, ",") {
+			sortArr = append(sortArr, metadata.SearchSort{
+				IsDsc: true,
+				Field: field,
+			})
 		}
+	}
 
-		filter = map[string]interface{}{
-			common.BKDBAND: []map[string]interface{}{
-				input.Condition,
-				{
-					common.BKCloudIDField: map[string]interface{}{
-						common.BKDBIN: authorizedPlatIDs,
-					},
+	// auth: get authorized resources
+	authorizedPlatIDs, err := s.AuthManager.ListAuthorizedPlatIDs(srvData.ctx, srvData.user)
+	if err != nil {
+		blog.Errorf("FindManyCloudArea failed, ListAuthorizedPlatIDs failed, err: %+v, rid: %s", srvData.user, rid)
+		_ = resp.WriteError(http.StatusForbidden, &metadata.RespError{Msg: srvData.ccErr.Error(common.CCErrCommListAuthorizedResourceFromIAMFailed)})
+		return
+	}
+
+	filter := map[string]interface{}{
+		common.BKDBAND: []map[string]interface{}{
+			input.Condition,
+			{
+				common.BKCloudIDField: map[string]interface{}{
+					common.BKDBIN: authorizedPlatIDs,
 				},
 			},
-		}
+		},
 	}
 	query := &metadata.QueryCondition{
 		Condition: filter,
-		Page:      input.Page,
+		Limit: metadata.SearchLimit{
+			Limit:  int64(input.Page.Limit),
+			Offset: int64(input.Page.Start),
+		},
+		SortArr: sortArr,
 	}
 
 	res, err := s.CoreAPI.CoreService().Instance().ReadInstance(srvData.ctx, srvData.header, common.BKInnerObjIDPlat, query)
@@ -87,6 +99,7 @@ func (s *Service) FindManyCloudArea(req *restful.Request, resp *restful.Response
 		blog.Errorf("FindManyCloudArea http reply error.  query:%#v, err code:%d, err msg:%s, rid:%s", query, res.Code, res.ErrMsg, rid)
 		_ = resp.WriteError(http.StatusBadRequest, &metadata.RespError{Msg: srvData.ccErr.New(res.Code, res.ErrMsg)})
 		return
+
 	}
 
 	retData := map[string]interface{}{
@@ -115,7 +128,7 @@ func (s *Service) CreatePlat(req *restful.Request, resp *restful.Response) {
 	input[common.BkSupplierAccount] = util.GetOwnerID(req.Request.Header)
 
 	// auth: check authorization
-	if err := s.AuthManager.AuthorizeResourceCreate(srvData.ctx, srvData.header, 0, authmeta.Model); err != nil {
+	if err := s.AuthManager.AuthorizeResourceCreate(srvData.ctx, srvData.header, 0, authmeta.Plat); err != nil {
 		blog.Errorf("check create plat authorization failed, err: %v, rid: %s", err, srvData.rid)
 		_ = resp.WriteError(http.StatusForbidden, &meta.RespError{Msg: srvData.ccErr.Error(common.CCErrCommAuthorizeFailed)})
 		return
@@ -289,7 +302,7 @@ func (s *Service) UpdatePlat(req *restful.Request, resp *restful.Response) {
 		return
 	}
 	if res.Result == false || res.Code != 0 {
-		blog.ErrorJSON("UpdatePlat failed, UpdateInstance failed, input:%s, response:%s, rid:%s", updateOption, res, srvData.rid)
+		blog.ErrorJSON("UpdatePlat failed, UpdateInstance failed, input:%s, response:%s, err:%s, rid:%s", updateOption, res, err.Error(), srvData.rid)
 		ccErr := &meta.RespError{Msg: errors.New(res.Code, res.ErrMsg)}
 		_ = resp.WriteError(http.StatusInternalServerError, ccErr)
 		return

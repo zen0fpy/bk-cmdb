@@ -12,8 +12,7 @@
                             v-validate="`required|enumId|repeat:${getOtherId(index)}`"
                             @input="handleInput"
                             :disabled="isReadOnly"
-                            :name="`id${index}`"
-                            :ref="`id${index}`">
+                            :name="`id${index}`">
                         </bk-input>
                         <p class="form-error">{{errors.first(`id${index}`)}}</p>
                     </div>
@@ -35,7 +34,7 @@
                 <bk-button text class="enum-btn" @click="deleteEnum(index)" :disabled="enumList.length === 1 || isReadOnly">
                     <i class="bk-icon icon-minus-circle-shape"></i>
                 </bk-button>
-                <bk-button text class="enum-btn" @click="addEnum(index)" :disabled="isReadOnly" v-if="index === enumList.length - 1">
+                <bk-button text class="enum-btn" @click="addEnum" :disabled="isReadOnly" v-if="index === enumList.length - 1">
                     <i class="bk-icon icon-plus-circle-shape"></i>
                 </bk-button>
             </li>
@@ -136,16 +135,13 @@
                     }
                 })
             },
-            addEnum (index) {
+            addEnum () {
                 this.enumList.push({
                     id: '',
                     is_default: false,
                     name: ''
                 })
                 this.handleInput()
-                this.$nextTick(() => {
-                    this.$refs[`id${index + 1}`] && this.$refs[`id${index + 1}`][0].focus()
-                })
             },
             deleteEnum (index) {
                 this.enumList.splice(index, 1)

@@ -35,7 +35,6 @@ func NewClient(c *TLSClientConfig) (*http.Client, error) {
 	}
 
 	transport := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
 		TLSHandshakeTimeout: 5 * time.Second,
 		TLSClientConfig:     tlsConf,
 		Dial: (&net.Dialer{

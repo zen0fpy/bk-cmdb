@@ -1,11 +1,7 @@
 <template>
     <div class="group-layout" v-bkloading="{ isLoading: $loading(), extCls: 'field-loading' }">
         <div class="layout-header">
-            <bk-button @click="previewShow = true" :disabled="!properties.length">{{$t('字段预览')}}</bk-button>
-            <bk-button text class="setting-btn" v-if="canEditSort" @click="configProperty.show = true">
-                <i class="icon-cc-setting"></i>
-                {{$t('表格排序设置')}}
-            </bk-button>
+            <bk-button @click="previewShow = true" :disabled="!preview.properties.length">{{$t('字段预览')}}</bk-button>
         </div>
         <div class="layout-content">
             <div class="group"
@@ -73,12 +69,13 @@
                                 empty: !group.properties.length,
                                 disabled: !updateAuth || !isEditable(group.info)
                             }"
-                            @change="handleDragChange">
+                            @change="handleDragChange"
+                            @end="handleDragEnd">
                             <li class="property-item fl"
                                 v-for="(property, fieldIndex) in group.properties"
                                 :class="{ 'only-ready': !updateAuth || !isFieldEditable(property) }"
                                 :key="fieldIndex"
-                                @click="handleFieldDetailsView({ group, index, fieldIndex, property })">
+                                @click="handleFieldDetailsView(!updateAuth || !isFieldEditable(property), property)">
                                 <span class="drag-logo"></span>
                                 <div class="drag-content">
                                     <div class="field-name">
@@ -206,27 +203,17 @@
             :width="540"
             :title="slider.title"
             :is-show.sync="slider.isShow"
-            :before-close="slider.beforeClose"
-            @hidden="handleSliderHidden">
-            <field-details-view v-if="slider.isShow && slider.view === 'details'"
-                slot="content"
-                :field="slider.curField"
-                :can-edit="updateAuth && isFieldEditable(slider.curField)"
-                @on-edit="handleEditField(slider.curGroup, slider.curField)"
-                @on-delete="handleDeleteField({
-                    property: slider.curField,
-                    index: slider.index,
-                    fieldIndex: slider.fieldIndex
-                })">
-            </field-details-view>
-            <the-field-detail v-else-if="slider.isShow && slider.view === 'operation'"
+            :before-close="handleSliderBeforeClose">
+            <the-field-detail
                 ref="fieldForm"
                 slot="content"
+                v-if="slider.isShow"
                 :is-main-line-model="isMainLineModel"
                 :is-read-only="isReadOnly"
                 :is-edit-field="slider.isEditField"
                 :field="slider.curField"
                 :group="slider.curGroup"
+                :property-index="slider.propertyIndex"
                 @save="handleFieldSave"
                 @cancel="handleSliderBeforeClose">
             </the-field-detail>
@@ -239,26 +226,21 @@
             :is-show.sync="previewShow">
             <preview-field v-if="previewShow"
                 slot="content"
-                :properties="properties"
-                :property-groups="groups">
+                :properties="preview.properties"
+                :property-groups="preview.groups">
             </preview-field>
         </bk-sideslider>
 
         <bk-sideslider
             v-transfer-dom
-            :is-show.sync="configProperty.show"
-            :width="676"
-            :title="$t('实例表格字段排序设置')">
-            <cmdb-columns-config slot="content"
-                v-if="configProperty.show"
-                :properties="properties"
-                :selected="configProperty.selected"
-                :disabled-columns="disabledConfig"
-                :show-reset="false"
-                :confirm-text="$t('确定')"
-                @on-cancel="configProperty.show = false"
-                @on-apply="handleApplyConfig">
-            </cmdb-columns-config>
+            :width="540"
+            :title="$t('字段详情')"
+            :is-show.sync="fieldDetailsDialog.isShow"
+            @hidden="handleHideFieldDetailsView">
+            <field-details-view v-if="fieldDetailsDialog.isShow"
+                slot="content"
+                :field="fieldDetailsDialog.field">
+            </field-details-view>
         </bk-sideslider>
     </div>
 </template>
@@ -268,15 +250,13 @@
     import theFieldDetail from './field-detail'
     import previewField from './preview-field'
     import fieldDetailsView from './field-view'
-    import CmdbColumnsConfig from '@/components/columns-config/columns-config'
-    import { mapGetters, mapActions, mapState } from 'vuex'
+    import { mapGetters, mapActions } from 'vuex'
     export default {
         components: {
             vueDraggable,
             theFieldDetail,
             previewField,
-            fieldDetailsView,
-            CmdbColumnsConfig
+            fieldDetailsView
         },
         props: {
             customObjId: String
@@ -284,9 +264,8 @@
         data () {
             return {
                 updateAuth: false,
-                properties: [],
-                groups: [],
                 groupedProperties: [],
+                shouldUpdatePropertyIndex: false,
                 previewShow: false,
                 groupState: {},
                 initGroupState: {},
@@ -322,30 +301,24 @@
                     isCollapse: false
                 },
                 slider: {
-                    view: 'details',
                     isShow: false,
                     title: this.$t('新建字段'),
                     isEditField: false,
                     curField: {},
                     curGroup: {},
-                    group: {},
-                    beforeClose: null,
-                    index: null,
-                    fieldIndex: null,
-                    backView: ''
+                    propertyIndex: 0
                 },
                 preview: {
                     properties: [],
                     groups: []
                 },
-                configProperty: {
-                    show: false,
-                    selected: []
+                fieldDetailsDialog: {
+                    isShow: false,
+                    field: {}
                 }
             }
         },
         computed: {
-            ...mapState('userCustom', ['globalUsercustom']),
             ...mapGetters(['supplierAccount', 'isAdminView', 'isBusinessSelected']),
             ...mapGetters('objectModel', ['isInjectable', 'activeModel']),
             objId () {
@@ -388,25 +361,12 @@
                     resource_id: this.modelId,
                     type: this.$OPERATION.U_MODEL
                 })
-            },
-            disabledConfig () {
-                const disabled = {
-                    host: ['bk_host_innerip', 'bk_cloud_id'],
-                    biz: ['bk_biz_name']
-                }
-                return disabled[this.objId] || ['bk_inst_name']
-            },
-            curGlobalCustomTableColumns () {
-                return this.globalUsercustom[`${this.objId}_global_custom_table_columns`]
-            },
-            canEditSort () {
-                return !this.customObjId && this.curModel['bk_classification_id'] !== 'bk_biz_topo'
             }
         },
         async created () {
             const [properties, groups] = await Promise.all([this.getProperties(), this.getPropertyGroups()])
-            this.properties = properties
-            this.groups = groups
+            this.preview.properties = properties
+            this.preview.groups = groups
             this.init(properties, groups)
         },
         methods: {
@@ -415,8 +375,7 @@
                 'updateGroup',
                 'deleteGroup',
                 'createGroup',
-                'updatePropertyGroup',
-                'updatePropertySort'
+                'updatePropertyGroup'
             ]),
             ...mapActions('objectModelProperty', [
                 'searchObjectAttribute'
@@ -464,25 +423,19 @@
                 group['info']['bk_group_index'] = index - 1
                 this.updateGroupIndex()
                 this.resortGroups()
+                this.updatePropertyIndex()
             },
             handleDropGroup (index, group) {
                 this.groupedProperties[index + 1]['info']['bk_group_index'] = index
                 group.info['bk_group_index'] = index + 1
                 this.updateGroupIndex()
                 this.resortGroups()
+                this.updatePropertyIndex()
             },
-            async resetData (filedId) {
+            async resetData () {
                 const [properties, groups] = await Promise.all([this.getProperties(), this.getPropertyGroups()])
-                if (filedId && this.slider.isShow) {
-                    const field = properties.find(property => property.bk_property_id === filedId)
-                    if (field) {
-                        this.slider.curField = field
-                    } else {
-                        this.handleSliderHidden()
-                    }
-                }
-                this.properties = properties
-                this.groups = groups
+                this.preview.properties = properties
+                this.preview.groups = groups
                 this.init(properties, groups)
             },
             init (properties, groups) {
@@ -502,8 +455,6 @@
                         })
                     }
                 })
-                const seletedProperties = this.$tools.getHeaderProperties(properties, [], this.disabledConfig)
-                this.configProperty.selected = this.curGlobalCustomTableColumns || seletedProperties.map(property => property.bk_property_id)
                 this.initGroupState = this.$tools.clone(groupState)
                 this.groupState = Object.assign({}, groupState, this.groupState)
                 this.groupedProperties = groupedProperties
@@ -618,6 +569,7 @@
                             group.properties = resortedProperties
                         }
                     })
+                    this.updatePropertyIndex()
                 }
                 this.handleCancelAddProperty()
             },
@@ -750,53 +702,58 @@
                     })
                 })
             },
-            handleDragChange (moveInfo) {
-                if (moveInfo.hasOwnProperty('moved') || moveInfo.hasOwnProperty('added')) {
-                    const info = moveInfo.moved ? { ...moveInfo.moved } : { ...moveInfo.added }
-                    this.updatePropertyIndex(info)
+            handleDragChange (changeInfo) {
+                if (changeInfo.hasOwnProperty('moved')) {
+                    this.shouldUpdatePropertyIndex = changeInfo.moved.newIndex !== changeInfo.moved.oldIndex
+                } else {
+                    this.shouldUpdatePropertyIndex = true
                 }
             },
-            async updatePropertyIndex ({ element: property, newIndex }) {
-                let curIndex = 0
-                let curGroup = ''
-                for (const group of this.groupedProperties) {
-                    const len = group.properties.length
-                    for (const item of group.properties) {
-                        if (item.bk_property_id === property.bk_property_id) {
-                            // 取移动字段新位置的前一个字段 index + 1
-                            if (newIndex > 0) {
-                                // 拖拽插件bug 跨组拖动到最后的位置index会多1
-                                const index = newIndex === len ? newIndex - 2 : newIndex - 1
-                                curIndex = Number(group.properties[index].bk_property_index) + 1
-                            }
-                            curGroup = group.info.bk_group_id
-                            break
-                        }
-                    }
+            handleDragEnd () {
+                if (this.shouldUpdatePropertyIndex) {
+                    this.updatePropertyIndex()
+                    this.shouldUpdatePropertyIndex = false
                 }
-                await this.updatePropertySort({
-                    objId: this.objId,
-                    propertyId: property.id,
+            },
+            updatePropertyIndex () {
+                const updateProperties = []
+                const flatProperties = this.groupedProperties.reduce((acc, group) => acc.concat(group.properties), [])
+                flatProperties.forEach((property, index) => {
+                    if (property['bk_property_index'] !== index) {
+                        property['bk_property_index'] = index
+                        updateProperties.push(property)
+                    }
+                })
+                if (!updateProperties.length) return
+                this.updatePropertyGroup({
                     params: this.$injectMetadata({
-                        bk_property_group: curGroup,
-                        bk_property_index: curIndex
+                        data: updateProperties.map(property => {
+                            return {
+                                condition: {
+                                    'bk_obj_id': this.objId,
+                                    'bk_property_id': property['bk_property_id'],
+                                    'bk_supplier_account': property['bk_supplier_account']
+                                },
+                                data: {
+                                    'bk_property_group': property['bk_property_group'],
+                                    'bk_property_index': property['bk_property_index']
+                                }
+                            }
+                        })
                     }, { inject: this.isInjectable }),
                     config: {
-                        requestId: `updatePropertySort_${this.objId}`,
+                        requestId: `put_updatePropertyGroup_${this.objId}`,
                         cancelWhenRouteChange: false
                     }
                 })
-                const properties = await this.getProperties()
-                this.init(properties, this.preview.groups)
             },
             handleAddField (group) {
                 this.slider.isEditField = false
                 this.slider.curField = {}
                 this.slider.curGroup = group.info
+                this.slider.propertyIndex = group.properties.length
                 this.slider.title = this.$t('新建字段')
                 this.slider.isShow = true
-                this.slider.beforeClose = this.handleSliderBeforeClose
-                this.slider.view = 'operation'
             },
             handleEditField (group, property) {
                 this.slider.isEditField = true
@@ -804,12 +761,12 @@
                 this.slider.curGroup = group.info
                 this.slider.title = this.$t('编辑字段')
                 this.slider.isShow = true
-                this.slider.beforeClose = this.handleSliderBeforeClose
-                this.slider.view = 'operation'
             },
-            handleFieldSave (filedId) {
-                this.handleBackView()
-                this.resetData(filedId)
+            handleFieldSave () {
+                this.resetData()
+                this.slider.isShow = false
+                this.slider.curField = {}
+                this.slider.curGroup = {}
             },
             handleDeleteField ({ property: field, index, fieldIndex }) {
                 this.$bkInfo({
@@ -828,23 +785,10 @@
                             this.$http.cancel(`post_searchObjectAttribute_${this.activeModel['bk_obj_id']}`)
                             if (res.data.bk_error_msg === 'success' && res.data.bk_error_code === 0) {
                                 this.groupedProperties[index].properties.splice(fieldIndex, 1)
-                                this.handleSliderHidden()
                             }
                         })
                     }
                 })
-            },
-            handleBackView () {
-                if (this.slider.backView === 'details') {
-                    this.handleFieldDetailsView({
-                        group: this.slider.group,
-                        index: this.slider.index,
-                        fieldIndex: this.slider.fieldIndex,
-                        property: this.slider.curField
-                    })
-                } else {
-                    this.handleSliderHidden()
-                }
             },
             handleSliderBeforeClose () {
                 const hasChanged = Object.keys(this.$refs.fieldForm.changedValues).length
@@ -855,7 +799,7 @@
                             subTitle: this.$t('退出会导致未保存信息丢失'),
                             extCls: 'bk-dialog-sub-header-center',
                             confirmFn: () => {
-                                this.handleBackView()
+                                this.slider.isShow = false
                                 resolve(true)
                             },
                             cancelFn: () => {
@@ -864,41 +808,20 @@
                         })
                     })
                 }
-                this.handleBackView()
+                this.slider.isShow = false
                 return true
             },
-            handleSliderHidden () {
-                this.slider.isShow = false
-                this.slider.curField = {}
-                this.slider.beforeClose = null
-                this.slider.backView = ''
+            handleFieldDetailsView (show, field) {
+                if (!show) return
+                this.fieldDetailsDialog.isShow = true
+                this.fieldDetailsDialog.field = field
             },
-            handleFieldDetailsView ({ group, index, fieldIndex, property }) {
-                this.slider.isShow = true
-                this.slider.curField = property
-                this.slider.curGroup = group.info
-                this.slider.group = group
-                this.slider.view = 'details'
-                this.slider.backView = 'details'
-                this.slider.title = this.$t('字段详情')
-                this.slider.index = index
-                this.slider.fieldIndex = fieldIndex
-                this.slider.beforeClose = null
+            handleHideFieldDetailsView () {
+                this.fieldDetailsDialog.isShow = false
+                this.fieldDetailsDialog.field = {}
             },
             handleReceiveAuth (auth) {
                 this.updateAuth = auth
-            },
-            handleApplyConfig (properties) {
-                const setProperties = properties.map(property => property.bk_property_id)
-                this.$store.dispatch('userCustom/saveGlobalUsercustom', {
-                    objId: this.objId,
-                    params: {
-                        global_custom_table_columns: setProperties
-                    }
-                }).then(() => {
-                    this.configProperty.selected = setProperties
-                    this.configProperty.show = false
-                })
             }
         }
     }
@@ -913,17 +836,6 @@
     }
     .layout-header {
         margin: 0 0 14px;
-        .setting-btn {
-            float: right;
-            height: 32px;
-            line-height: 32px;
-            color: #63656e;
-            .icon-cc-setting {
-                font-size: 18px;
-                color: #979ba5;
-                vertical-align: unset;
-            }
-        }
     }
     .group {
         margin-bottom: 19px;
@@ -1155,7 +1067,7 @@
             color: #3a84ff;
             font-size: 16px;
             &.is-disabled {
-                color: #C4C6CC;
+                color: #C4C6cc;
                 .icon {
                     color: #63656E;
                 }

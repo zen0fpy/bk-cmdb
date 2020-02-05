@@ -70,9 +70,6 @@
             },
             handleChange () {
                 this.$emit('on-change', this.localValue)
-            },
-            focus () {
-                this.$el.querySelector('input').focus()
             }
         }
     }

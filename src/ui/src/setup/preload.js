@@ -23,19 +23,9 @@ export function getUserCustom (app) {
     })
 }
 
-export function getGlobalUsercustom (app) {
-    return app.$store.dispatch('userCustom/getGlobalUsercustom', {
-        config: {
-            ...preloadConfig,
-            fromCache: false
-        }
-    })
-}
-
 export default async function (app) {
     return Promise.all([
         getClassifications(app),
-        getUserCustom(app),
-        getGlobalUsercustom(app)
+        getUserCustom(app)
     ])
 }

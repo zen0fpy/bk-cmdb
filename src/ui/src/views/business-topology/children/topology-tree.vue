@@ -31,14 +31,14 @@
                     class="info-create-trigger fr"
                     :auth="$authResources({ type: $OPERATION.C_TOPO })">
                     <template slot-scope="{ disabled }">
-                        <i v-if="isBlueKing && !editable"
+                        <i v-if="isBlueKing"
                             class="node-button disabled-node-button"
-                            v-bk-tooltips="{ content: $t('蓝鲸业务拓扑节点提示'), placement: 'top', interactive: false }">
+                            v-bk-tooltips="{ content: $t('蓝鲸业务拓扑节点提示'), placement: 'top' }">
                             {{$t('新建')}}
                         </i>
                         <i v-else-if="data.set_template_id"
                             class="node-button disabled-node-button"
-                            v-bk-tooltips="{ content: $t('需在集群模板中新建'), placement: 'top', interactive: false }">
+                            v-bk-tooltips="{ content: $t('模板集群添加模块提示'), placement: 'top' }">
                             {{$t('新建')}}
                         </i>
                         <bk-button v-else class="node-button"
@@ -130,9 +130,7 @@
                     properties: [],
                     parentNode: null,
                     nextModelId: null
-                },
-                editable: false,
-                timer: null
+                }
             }
         },
         computed: {
@@ -151,13 +149,6 @@
                 if (Object.keys(map).includes(value)) {
                     this.nodeCountType = map[value]
                 }
-            },
-            isBlueKing (flag) {
-                if (flag) {
-                    this.getBlueKingEditStatus()
-                    clearInterval(this.timer)
-                    this.timer = setInterval(this.getBlueKingEditStatus, 1000 * 60)
-                }
             }
         },
         created () {
@@ -169,7 +160,6 @@
         },
         beforeDestroy () {
             Bus.$off('refresh-count', this.refreshCount)
-            clearInterval(this.timer)
         },
         methods: {
             async initTopology () {
@@ -261,18 +251,6 @@
                 const isModule = data.bk_obj_id === 'module'
                 const isIdleSet = data.is_idle_set
                 return !isModule && !isIdleSet
-            },
-            async getBlueKingEditStatus () {
-                try {
-                    this.editable = await this.$store.dispatch('getBlueKingEditStatus', {
-                        config: {
-                            globalError: false
-                        }
-                    })
-                    this.$store.commit('businessHost/setBlueKingEditable', this.editable)
-                } catch (_) {
-                    this.editable = false
-                }
             },
             async showCreateDialog (node) {
                 const nodeModel = this.topologyModels.find(data => data.bk_obj_id === node.data.bk_obj_id)
@@ -544,7 +522,8 @@
         }
     }
     .node-info {
-        &:hover {
+        &:hover,
+        &.is-selected {
             .info-create-trigger {
                 display: inline-block;
                 & ~ .node-count {

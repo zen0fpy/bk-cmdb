@@ -9,11 +9,6 @@ export default [{
         menu: {
             i18n: '主机'
         },
-        layout: {
-            previous: {
-                name: MENU_RESOURCE_MANAGEMENT
-            }
-        },
         filterPropertyKey: 'resource_host_filter_properties'
     })
 }, {
@@ -23,11 +18,6 @@ export default [{
     meta: new Meta({
         menu: {
             relative: MENU_RESOURCE_MANAGEMENT
-        },
-        layout: {
-            previous: {
-                name: MENU_RESOURCE_HOST
-            }
         }
     })
 }]

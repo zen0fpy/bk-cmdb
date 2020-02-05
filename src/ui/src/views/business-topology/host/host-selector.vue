@@ -1,13 +1,10 @@
 <template>
-    <div class="host-selector-layout clearfix"
+    <div class="layout clearfix"
         v-bkloading="{ isLoading: $loading(Object.values(request)) }">
         <div class="wrapper clearfix">
             <div class="wrapper-column wrapper-left fl">
                 <h2 class="title">{{$t('选择主机')}}</h2>
-                <bk-select class="selector-type"
-                    :clearable="false"
-                    :disabled="!!displayNodes.length"
-                    v-model="type">
+                <bk-select class="selector-type" v-model="type" :clearable="false">
                     <bk-option id="topology" :name="$t('业务拓扑')"></bk-option>
                     <bk-option id="custom" name="IP"></bk-option>
                 </bk-select>
@@ -43,8 +40,8 @@
             </div>
         </div>
         <div class="layout-footer">
-            <bk-button class="mr10" theme="primary" :disabled="!selected.length" @click="handleNextStep">{{confirmText || $t('下一步')}}</bk-button>
-            <bk-button theme="default" @click="handleCancel">{{$t('取消')}}</bk-button>
+            <bk-button class="mr10" theme="default" @click="handleCancel">{{$t('取消')}}</bk-button>
+            <bk-button theme="primary" :disabled="!selected.length" @click="handleNextStep">{{confirmText || $t('下一步')}}</bk-button>
         </div>
     </div>
 </template>
@@ -74,10 +71,6 @@
             confirmText: {
                 type: String,
                 default: ''
-            },
-            displayNodes: {
-                type: Array,
-                default: () => ([])
             }
         },
         data () {
@@ -169,7 +162,7 @@
 </script>
 
 <style lang="scss" scoped>
-    .host-selector-layout {
+    .layout {
         position: relative;
         height: 460px;
         min-height: 300px;

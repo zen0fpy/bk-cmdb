@@ -93,6 +93,11 @@ var expectSystemResourceType = []ResourceType{
 				ActionName:        "删除",
 				IsRelatedResource: true,
 			},
+			{
+				ActionID:          Get,
+				ActionName:        "查询",
+				IsRelatedResource: true,
+			},
 		},
 	},
 	{
@@ -148,7 +153,7 @@ var expectSystemResourceType = []ResourceType{
 	},
 	{
 		ResourceTypeID:       SysEventPushing,
-		ResourceTypeName:     "事件订阅",
+		ResourceTypeName:     "事件推送",
 		ParentResourceTypeID: "",
 		Share:                false,
 		Actions: []Action{

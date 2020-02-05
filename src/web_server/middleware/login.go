@@ -13,6 +13,7 @@
 package middleware
 
 import (
+	"plugin"
 	"strings"
 
 	"configcenter/src/apimachinery/discovery"
@@ -32,6 +33,7 @@ import (
 
 var Engine *backbone.Engine
 var CacheCli *redis.Client
+var LoginPlg *plugin.Plugin
 
 // ValidLogin valid the user login status
 func ValidLogin(config options.Config, disc discovery.DiscoveryInterface) gin.HandlerFunc {
@@ -40,9 +42,6 @@ func ValidLogin(config options.Config, disc discovery.DiscoveryInterface) gin.Ha
 		rid := util.GetHTTPCCRequestID(c.Request.Header)
 		pathArr := strings.Split(c.Request.URL.Path, "/")
 		path1 := pathArr[1]
-
-		// 删除 Accept-Encoding 避免返回值被压缩
-		c.Request.Header.Del("Accept-Encoding")
 
 		switch path1 {
 		case "healthz", "metrics":
@@ -86,7 +85,7 @@ func ValidLogin(config options.Config, disc discovery.DiscoveryInterface) gin.Ha
 				c.Abort()
 				return
 			} else {
-				user := user.NewUser(config, Engine, CacheCli)
+				user := user.NewUser(config, Engine, CacheCli, LoginPlg)
 				url := user.GetLoginUrl(c)
 				c.Redirect(302, url)
 				c.Abort()
@@ -100,7 +99,29 @@ func ValidLogin(config options.Config, disc discovery.DiscoveryInterface) gin.Ha
 // IsAuthed check user is authed
 func isAuthed(c *gin.Context, config options.Config) bool {
 	rid := util.GetHTTPCCRequestID(c.Request.Header)
-	user := user.NewUser(config, Engine, CacheCli)
+	if "1" == config.Session.Skip {
+		session := sessions.Default(c)
+
+		cookieOwnerID, err := c.Cookie(common.BKHTTPOwnerID)
+		if "" == cookieOwnerID || nil != err {
+			c.SetCookie(common.BKHTTPOwnerID, common.BKDefaultOwnerID, 0, "/", "", false, false)
+			session.Set(common.WEBSessionOwnerUinKey, cookieOwnerID)
+		} else if cookieOwnerID != session.Get(common.WEBSessionOwnerUinKey) {
+			session.Set(common.WEBSessionOwnerUinKey, cookieOwnerID)
+		}
+		session.Set(common.WEBSessionSupplierID, "0")
+
+		blog.V(5).Infof("skip login, cookie language: %s, cookieOwnerID: %s, rid: %s", webCommon.GetLanguageByHTTPRequest(c), cookieOwnerID, rid)
+		session.Set(common.WEBSessionUinKey, "admin")
+
+		session.Set(common.WEBSessionRoleKey, "1")
+		session.Set(webCommon.IsSkipLogin, "1")
+		if err := session.Save(); err != nil {
+			blog.Warnf("save session failed, err: %s, rid: %s", err.Error(), rid)
+		}
+		return true
+	}
+	user := user.NewUser(config, Engine, CacheCli, LoginPlg)
 	session := sessions.Default(c)
 
 	// check bk_token
@@ -129,6 +150,12 @@ func isAuthed(c *gin.Context, config options.Config) bool {
 	}
 
 	bkTokenName := common.HTTPCookieBKToken
+	if nil != LoginPlg {
+		bkPluginTokenName, err := LoginPlg.Lookup("BKTokenName")
+		if nil == err {
+			bkTokenName = *bkPluginTokenName.(*string)
+		}
+	}
 	bkToken, err := c.Cookie(bkTokenName)
 	blog.V(5).Infof("valid user login session token %s, cookie token %s, rid: %s", ccToken, bkToken, rid)
 	if nil != err || bkToken != ccToken {

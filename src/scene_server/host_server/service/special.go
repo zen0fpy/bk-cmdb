@@ -15,7 +15,6 @@ package service
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
@@ -59,8 +58,8 @@ func (s *Service) BKSystemInstall(req *restful.Request, resp *restful.Response) 
 
 	err := srvData.lgc.NewSpecial().BkSystemInstall(srvData.ctx, common.BKAppName, input)
 	if err != nil {
-		blog.Errorf("BkSystemInstall handle err: %v, rid:%s", err, srvData.rid)
-		_ = resp.WriteError(http.StatusInternalServerError, &meta.RespError{Msg: err})
+		blog.Errorf("BkSystemInstall decode handle err: %v, rid:%s", err, srvData.rid)
+		_ = resp.WriteError(http.StatusBadRequest, &meta.RespError{Msg: err})
 		return
 	}
 
@@ -68,29 +67,4 @@ func (s *Service) BKSystemInstall(req *restful.Request, resp *restful.Response) 
 		BaseResp: meta.SuccessBaseResp,
 		Data:     "",
 	})
-}
-
-func (s *Service) FindSystemUserConfigBKSwitch(req *restful.Request, resp *restful.Response) {
-
-	srvData := s.newSrvComm(req.Request.Header)
-
-	// 没有权限校验
-	data, err := srvData.lgc.CoreAPI.CoreService().System().GetUserConfig(srvData.ctx, srvData.header)
-	if err != nil {
-		blog.Errorf("FindSystemUserConfig handle err: %v, rid:%s", err, srvData.rid)
-		_ = resp.WriteError(http.StatusInternalServerError, &meta.RespError{Msg: err})
-		return
-	}
-	canModify := false
-	if data != nil {
-		if data.BluekingModify.Flag == true && data.BluekingModify.ExpireAt > time.Now().Unix() {
-			canModify = true
-		}
-	}
-
-	resp.WriteEntity(meta.Response{
-		BaseResp: meta.SuccessBaseResp,
-		Data:     canModify,
-	})
-
 }

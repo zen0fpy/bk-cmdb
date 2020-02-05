@@ -219,7 +219,7 @@
             }
         },
         computed: {
-            ...mapGetters(['isAdminView', 'isBusinessSelected', 'supplierAccount', 'userName', 'mainFullScreen']),
+            ...mapGetters(['isAdminView', 'isBusinessSelected', 'supplierAccount', 'userName', 'featureTipsParams', 'mainFullScreen']),
             ...mapGetters('userCustom', ['usercustom']),
             ...mapGetters('objectBiz', ['bizId']),
             ...mapGetters('objectModelClassify', [

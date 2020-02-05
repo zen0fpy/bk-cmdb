@@ -25,7 +25,7 @@ func (t *meta) SearchTopoGraphics(ctx context.Context, h http.Header, dat *metad
 	err = t.client.Post().
 		WithContext(ctx).
 		Body(dat).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)
@@ -41,7 +41,7 @@ func (t *meta) UpdateTopoGraphics(ctx context.Context, h http.Header, dat []meta
 	err = t.client.Post().
 		WithContext(ctx).
 		Body(data).
-		SubResourcef(subPath).
+		SubResource(subPath).
 		WithHeaders(h).
 		Do().
 		Into(resp)

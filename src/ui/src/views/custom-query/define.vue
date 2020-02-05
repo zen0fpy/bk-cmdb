@@ -96,7 +96,6 @@
                                         <component class="filter-field-value fl" :class="`filter-field-${property.propertyType}`"
                                             v-else
                                             v-validate="'required'"
-                                            :unit="property.unit"
                                             :data-vv-name="property.propertyId"
                                             :is="`cmdb-form-${property.propertyType}`"
                                             :disabled="disabled"
@@ -466,7 +465,6 @@
                                     'propertyName': originalProperty['bk_property_name'],
                                     'propertyId': originalProperty['bk_property_id'],
                                     'asstObjId': originalProperty['bk_asst_obj_id'],
-                                    'unit': originalProperty['unit'],
                                     'operator': property.operator,
                                     'value': this.getUserPropertyValue(property, originalProperty)
                                 })
@@ -683,8 +681,7 @@
                         'bk_property_name': propertyName,
                         'bk_property_type': propertyType,
                         'bk_asst_obj_id': asstObjId,
-                        'bk_obj_id': objId,
-                        unit
+                        'bk_obj_id': objId
                     } = this.filterList.find(property => property.filter_id === addPropertyList[i].filter_id)
                     this.userProperties.push({
                         objId,
@@ -693,7 +690,6 @@
                         propertyName,
                         objName: this.object[objId].name,
                         asstObjId,
-                        unit,
                         operator: this.operatorMap.hasOwnProperty(propertyType) ? this.operatorMap[propertyType] : '',
                         value: ''
                     })

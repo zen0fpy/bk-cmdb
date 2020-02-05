@@ -14,6 +14,7 @@ package hostapplyrule
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"configcenter/src/common/blog"
@@ -26,11 +27,12 @@ func (p *hostApplyRule) CreateHostApplyRule(ctx context.Context, header http.Hea
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.HostApplyRule `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/create/host_apply_rule/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/create/host_apply_rule/bk_biz_id/%d/", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -51,11 +53,12 @@ func (p *hostApplyRule) UpdateHostApplyRule(ctx context.Context, header http.Hea
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.HostApplyRule `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/update/host_apply_rule/%d/bk_biz_id/%d/", ruleID, bizID)
 
 	err := p.client.Put().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/update/host_apply_rule/%d/bk_biz_id/%d/", ruleID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -75,11 +78,12 @@ func (p *hostApplyRule) DeleteHostApplyRule(ctx context.Context, header http.Hea
 	ret := struct {
 		metadata.BaseResp `json:",inline"`
 	}{}
+	subPath := fmt.Sprintf("/deletemany/host_apply_rule/bk_biz_id/%d/", bizID)
 
 	err := p.client.Delete().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/deletemany/host_apply_rule/bk_biz_id/%d/", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -100,10 +104,11 @@ func (p *hostApplyRule) GetHostApplyRule(ctx context.Context, header http.Header
 		metadata.BaseResp `json:",inline"`
 		Data              metadata.HostApplyRule `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/find/host_apply_rule/%d/bk_biz_id/%d/", ruleID, bizID)
 
 	err := p.client.Get().
 		WithContext(ctx).
-		SubResourcef("/find/host_apply_rule/%d/bk_biz_id/%d/", ruleID, bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -124,11 +129,12 @@ func (p *hostApplyRule) ListHostApplyRule(ctx context.Context, header http.Heade
 		metadata.BaseResp
 		Data metadata.MultipleHostApplyRuleResult `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/findmany/host_apply_rule/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/findmany/host_apply_rule/bk_biz_id/%d/", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -149,11 +155,12 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(ctx context.Context, header htt
 		metadata.BaseResp
 		Data metadata.BatchCreateOrUpdateHostApplyRuleResult `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/updatemany/host_apply_rule/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/updatemany/host_apply_rule/bk_biz_id/%d/", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -174,11 +181,12 @@ func (p *hostApplyRule) GenerateApplyPlan(ctx context.Context, header http.Heade
 		metadata.BaseResp
 		Data metadata.HostApplyPlanResult `json:"data"`
 	}{}
+	subPath := fmt.Sprintf("/findmany/host_apply_plan/bk_biz_id/%d/", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/findmany/host_apply_plan/bk_biz_id/%d/", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -202,11 +210,12 @@ func (p *hostApplyRule) SearchRuleRelatedModules(ctx context.Context, header htt
 		BaseResp: metadata.BaseResp{},
 		Data:     make([]metadata.Module, 0),
 	}
+	subPath := fmt.Sprintf("/findmany/modules/bk_biz_id/%d/host_apply_rule_related", bizID)
 
 	err := p.client.Post().
 		WithContext(ctx).
 		Body(option).
-		SubResourcef("/findmany/modules/bk_biz_id/%d/host_apply_rule_related", bizID).
+		SubResource(subPath).
 		WithHeaders(header).
 		Do().
 		Into(&ret)
@@ -219,29 +228,5 @@ func (p *hostApplyRule) SearchRuleRelatedModules(ctx context.Context, header htt
 		return ret.Data, errors.NewCCError(ret.Code, ret.ErrMsg)
 	}
 
-	return ret.Data, nil
-}
-
-func (p *hostApplyRule) RunHostApplyOnHosts(ctx context.Context, header http.Header, bizID int64, option metadata.UpdateHostByHostApplyRuleOption) (metadata.MultipleHostApplyResult, errors.CCErrorCoder) {
-	ret := struct {
-		metadata.BaseResp
-		Data metadata.MultipleHostApplyResult `json:"data"`
-	}{}
-
-	err := p.client.Put().
-		WithContext(ctx).
-		Body(option).
-		SubResourcef("/updatemany/host/bk_biz_id/%d/update_by_host_apply", bizID).
-		WithHeaders(header).
-		Do().
-		Into(&ret)
-
-	if err != nil {
-		blog.Errorf("RunHostApplyOnHosts failed, http request failed, err: %+v", err)
-		return ret.Data, errors.CCHttpError
-	}
-	if ret.Result == false || ret.Code != 0 {
-		return ret.Data, errors.NewCCError(ret.Code, ret.ErrMsg)
-	}
 	return ret.Data, nil
 }

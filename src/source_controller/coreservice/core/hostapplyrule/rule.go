@@ -15,13 +15,11 @@ package hostapplyrule
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/errors"
-	"configcenter/src/common/http/rest"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/querybuilder"
 	"configcenter/src/common/util"
@@ -30,39 +28,33 @@ import (
 )
 
 type hostApplyRule struct {
-	dbProxy    dal.RDB
-	dependence HostApplyDependence
+	dbProxy dal.RDB
 }
 
-type HostApplyDependence interface {
-	UpdateModelInstance(kit *rest.Kit, objID string, inputParam metadata.UpdateOption) (*metadata.UpdatedCount, error)
-}
-
-func New(dbProxy dal.RDB, dependence HostApplyDependence) core.HostApplyRuleOperation {
+func New(dbProxy dal.RDB) core.HostApplyRuleOperation {
 	rule := &hostApplyRule{
-		dbProxy:    dbProxy,
-		dependence: dependence,
+		dbProxy: dbProxy,
 	}
 	return rule
 }
 
-func (p *hostApplyRule) validateModuleID(kit *rest.Kit, bizID int64, moduleID int64) errors.CCErrorCoder {
+func (p *hostApplyRule) validateModuleID(ctx core.ContextParams, bizID int64, moduleID int64) errors.CCErrorCoder {
 	filter := map[string]interface{}{
 		common.BKAppIDField:    bizID,
 		common.BKModuleIDField: moduleID,
 	}
-	count, err := p.dbProxy.Table(common.BKTableNameBaseModule).Find(filter).Count(kit.Ctx)
+	count, err := p.dbProxy.Table(common.BKTableNameBaseModule).Find(filter).Count(ctx.Context)
 	if err != nil {
-		blog.Errorf("ValidateModuleID failed, validate module id failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-		return kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.Errorf("ValidateModuleID failed, validate module id failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+		return ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	if count == 0 {
-		return kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKModuleIDField)
+		return ctx.Error.CCErrorf(common.CCErrCommParamsInvalid, common.BKModuleIDField)
 	}
 	return nil
 }
 
-func (p *hostApplyRule) listHostAttributes(kit *rest.Kit, bizID int64, hostAttributeIDs ...int64) ([]metadata.Attribute, errors.CCErrorCoder) {
+func (p *hostApplyRule) listHostAttributes(ctx core.ContextParams, bizID int64, hostAttributeIDs ...int64) ([]metadata.Attribute, errors.CCErrorCoder) {
 	filter := map[string]interface{}{
 		common.BKDBOR: []map[string]interface{}{
 			{
@@ -87,35 +79,35 @@ func (p *hostApplyRule) listHostAttributes(kit *rest.Kit, bizID int64, hostAttri
 		},
 	}
 	attributes := make([]metadata.Attribute, 0)
-	err := p.dbProxy.Table(common.BKTableNameObjAttDes).Find(filter).All(kit.Ctx, &attributes)
+	err := p.dbProxy.Table(common.BKTableNameObjAttDes).Find(filter).All(ctx.Context, &attributes)
 	if err != nil {
 		if p.dbProxy.IsNotFoundError(err) {
-			blog.Errorf("get host attribute failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-			return attributes, kit.CCError.CCError(common.CCErrCommNotFound)
+			blog.Errorf("get host attribute failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+			return attributes, ctx.Error.CCError(common.CCErrCommNotFound)
 		}
-		blog.Errorf("get host attribute failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-		return attributes, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.Errorf("get host attribute failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+		return attributes, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	return attributes, nil
 }
 
-func (p *hostApplyRule) getHostAttribute(kit *rest.Kit, bizID int64, hostAttributeID int64) (metadata.Attribute, errors.CCErrorCoder) {
+func (p *hostApplyRule) getHostAttribute(ctx core.ContextParams, bizID int64, hostAttributeID int64) (metadata.Attribute, errors.CCErrorCoder) {
 	attribute := metadata.Attribute{}
-	attributes, err := p.listHostAttributes(kit, bizID, hostAttributeID)
+	attributes, err := p.listHostAttributes(ctx, bizID, hostAttributeID)
 	if err != nil {
-		blog.Errorf("getHostAttribute failed, listHostAttributes failed, bizID: %d, attribute: %d, err: %s, rid: %s", bizID, hostAttributeID, err.Error(), kit.Rid)
+		blog.Errorf("getHostAttribute failed, listHostAttributes failed, bizID: %d, attribute: %d, err: %s, rid: %s", bizID, hostAttributeID, err.Error(), ctx.ReqID)
 		return attribute, err
 	}
 	if len(attributes) == 0 {
-		return attribute, kit.CCError.CCError(common.CCErrCommNotFound)
+		return attribute, ctx.Error.CCError(common.CCErrCommNotFound)
 	}
 	if len(attributes) > 1 {
-		return attribute, kit.CCError.CCError(common.CCErrCommGetMultipleObject)
+		return attribute, ctx.Error.CCError(common.CCErrCommGetMultipleObject)
 	}
 	return attributes[0], nil
 }
 
-func (p *hostApplyRule) CreateHostApplyRule(kit *rest.Kit, bizID int64, option metadata.CreateHostApplyRuleOption) (metadata.HostApplyRule, errors.CCErrorCoder) {
+func (p *hostApplyRule) CreateHostApplyRule(ctx core.ContextParams, bizID int64, option metadata.CreateHostApplyRuleOption) (metadata.HostApplyRule, errors.CCErrorCoder) {
 	now := time.Now()
 	rule := metadata.HostApplyRule{
 		ID:              0,
@@ -123,183 +115,162 @@ func (p *hostApplyRule) CreateHostApplyRule(kit *rest.Kit, bizID int64, option m
 		AttributeID:     option.AttributeID,
 		ModuleID:        option.ModuleID,
 		PropertyValue:   option.PropertyValue,
-		Creator:         kit.User,
-		Modifier:        kit.User,
+		Creator:         ctx.User,
+		Modifier:        ctx.User,
 		CreateTime:      now,
 		LastTime:        now,
-		SupplierAccount: kit.SupplierAccount,
+		SupplierAccount: ctx.SupplierAccount,
 	}
 	if key, err := rule.Validate(); err != nil {
-		blog.Errorf("CreateHostApplyRule failed, parameter invalid, key: %s, err: %+v, rid: %s", key, err, kit.Rid)
-		return rule, kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, key)
+		blog.Errorf("CreateHostApplyRule failed, parameter invalid, key: %s, err: %+v, rid: %s", key, err, ctx.ReqID)
+		return rule, ctx.Error.CCErrorf(common.CCErrCommParamsInvalid, key)
 	}
 
 	// validate bk_module_id
-	if err := p.validateModuleID(kit, bizID, rule.ModuleID); err != nil {
-		blog.Errorf("CreateHostApplyRule failed, validate bk_module_id failed, bizID: %d, moduleID: %d, err: %s, rid: %s", bizID, err.Error(), kit.Rid)
+	if err := p.validateModuleID(ctx, bizID, rule.ModuleID); err != nil {
+		blog.Errorf("CreateHostApplyRule failed, validate bk_module_id failed, bizID: %d, moduleID: %d, err: %s, rid: %s", bizID, err.Error(), ctx.ReqID)
 		return rule, err
 	}
 
-	attribute, ccErr := p.getHostAttribute(kit, bizID, rule.AttributeID)
+	attribute, ccErr := p.getHostAttribute(ctx, bizID, rule.AttributeID)
 	if ccErr != nil {
-		blog.Errorf("CreateHostApplyRule failed, get host attribute failed, bizID: %d, attributeID: %d, err: %+v, rid: %s", bizID, rule.AttributeID, ccErr, kit.Rid)
+		blog.Errorf("CreateHostApplyRule failed, get host attribute failed, bizID: %d, attributeID: %d, err: %+v, rid: %s", bizID, rule.AttributeID, ccErr, ctx.ReqID)
 		return rule, ccErr
 	}
 
-	if value, ok := option.PropertyValue.(string); ok {
-		option.PropertyValue = strings.TrimSpace(value)
-	}
-	rawError := attribute.Validate(kit.Ctx, option.PropertyValue, common.BKPropertyValueField)
+	rawError := attribute.Validate(ctx.Context, option.PropertyValue, common.BKPropertyValueField)
 	if rawError.ErrCode != 0 {
-		ccErr := rawError.ToCCError(kit.CCError)
-		blog.Errorf("CreateHostApplyRule failed, validate host attribute value failed,  attribute: %+v, value: %+v, err: %+v, rid: %s", attribute, option.PropertyValue, ccErr, kit.Rid)
+		ccErr := rawError.ToCCError(ctx.Error)
+		blog.Errorf("CreateHostApplyRule failed, validate host attribute value failed,  attribute: %+v, value: %+v, err: %+v, rid: %s", attribute, option.PropertyValue, ccErr, ctx.ReqID)
 		return rule, ccErr
 	}
 
 	// generate id field
-	id, err := p.dbProxy.NextSequence(kit.Ctx, common.BKTableNameHostApplyRule)
+	id, err := p.dbProxy.NextSequence(ctx, common.BKTableNameHostApplyRule)
 	if nil != err {
-		blog.Errorf("CreateHostApplyRule failed, generate id failed, err: %+v, rid: %s", err, kit.Rid)
-		return rule, kit.CCError.CCErrorf(common.CCErrCommGenerateRecordIDFailed)
+		blog.Errorf("CreateHostApplyRule failed, generate id failed, err: %+v, rid: %s", err, ctx.ReqID)
+		return rule, ctx.Error.CCErrorf(common.CCErrCommGenerateRecordIDFailed)
 	}
 	rule.ID = int64(id)
 
-	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Insert(kit.Ctx, rule); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Insert(ctx.Context, rule); err != nil {
 		if p.dbProxy.IsDuplicatedError(err) {
-			blog.Errorf("CreateHostApplyRule failed, duplicated error, doc: %+v, err: %+v, rid: %s", rule, err, kit.Rid)
-			return rule, kit.CCError.CCErrorf(common.CCErrCommDuplicateItem, common.BKAttributeIDField)
+			blog.Errorf("CreateHostApplyRule failed, duplicated error, doc: %+v, err: %+v, rid: %s", rule, err, ctx.ReqID)
+			return rule, ctx.Error.CCErrorf(common.CCErrCommDuplicateItem, common.BKAttributeIDField)
 		}
-		blog.Errorf("CreateHostApplyRule failed, db insert failed, doc: %+v, err: %+v, rid: %s", rule, err, kit.Rid)
-		return rule, kit.CCError.CCError(common.CCErrCommDBInsertFailed)
+		blog.Errorf("CreateHostApplyRule failed, db insert failed, doc: %+v, err: %+v, rid: %s", rule, err, ctx.ReqID)
+		return rule, ctx.Error.CCError(common.CCErrCommDBInsertFailed)
 	}
 
 	return rule, nil
 }
 
-func (p *hostApplyRule) UpdateHostApplyRule(kit *rest.Kit, bizID int64, ruleID int64, option metadata.UpdateHostApplyRuleOption) (metadata.HostApplyRule, errors.CCErrorCoder) {
-	rule, ccErr := p.GetHostApplyRule(kit, bizID, ruleID)
-	if ccErr != nil {
-		blog.Errorf("UpdateHostApplyRule failed, GetHostApplyRule failed, bizID: %d, id: %d, err: %s, rid: %s", bizID, ruleID, ccErr.Error(), kit.Rid)
-		return rule, kit.CCError.CCError(common.CCErrCommNotFound)
+func (p *hostApplyRule) UpdateHostApplyRule(ctx core.ContextParams, bizID int64, ruleID int64, option metadata.UpdateHostApplyRuleOption) (metadata.HostApplyRule, errors.CCErrorCoder) {
+	rule, err := p.GetHostApplyRule(ctx, bizID, ruleID)
+	if err != nil {
+		blog.Errorf("UpdateHostApplyRule failed, rule not found, bizID: %d, id: %d, rid: %s", bizID, ruleID, ctx.ReqID)
+		return rule, ctx.Error.CCError(common.CCErrCommNotFound)
 	}
 
-	attribute, ccErr := p.getHostAttribute(kit, bizID, rule.AttributeID)
-	if ccErr != nil {
-		blog.Errorf("UpdateHostApplyRule failed, getHostAttribute failed, bizID: %d, attributeID: %d, err: %s, rid: %s", bizID, rule.AttributeID, ccErr.Error(), kit.Rid)
-		return rule, ccErr
-	}
-	if value, ok := option.PropertyValue.(string); ok {
-		option.PropertyValue = strings.TrimSpace(value)
-	}
-	rawError := attribute.Validate(kit.Ctx, option.PropertyValue, common.BKPropertyValueField)
+	attribute, err := p.getHostAttribute(ctx, bizID, rule.AttributeID)
+	rawError := attribute.Validate(ctx.Context, option.PropertyValue, common.BKPropertyValueField)
 	if rawError.ErrCode != 0 {
-		ccErr := rawError.ToCCError(kit.CCError)
-		blog.Errorf("UpdateHostApplyRule failed, validate host attribute value failed, attribute: %+v, value: %+v, err: %+v, rid: %s", attribute, option.PropertyValue, ccErr, kit.Rid)
+		ccErr := rawError.ToCCError(ctx.Error)
+		blog.Errorf("UpdateHostApplyRule failed, validate host attribute value failed,  attribute: %+v, value: %+v, err: %+v, rid: %s", attribute, option.PropertyValue, ccErr, ctx.ReqID)
 		return rule, ccErr
 	}
 
 	rule.LastTime = time.Now()
-	rule.Modifier = kit.User
+	rule.Modifier = ctx.User
 	rule.PropertyValue = option.PropertyValue
 
 	filter := map[string]interface{}{
 		common.BKFieldID: ruleID,
 	}
-	if err := p.dbProxy.Table(common.BKTableNameSetTemplate).Update(kit.Ctx, filter, rule); err != nil {
-		blog.ErrorJSON("UpdateHostApplyRule failed, db update failed, filter: %s, doc: %s, err: %s, rid: %s", filter, rule, err, kit.Rid)
-		return rule, kit.CCError.CCError(common.CCErrCommDBUpdateFailed)
+	if err := p.dbProxy.Table(common.BKTableNameSetTemplate).Update(ctx.Context, filter, rule); err != nil {
+		blog.ErrorJSON("UpdateHostApplyRule failed, db update failed, filter: %s, doc: %s, err: %s, rid: %s", filter, rule, err, ctx.ReqID)
+		return rule, ctx.Error.CCError(common.CCErrCommDBUpdateFailed)
 	}
 
 	return rule, nil
 }
 
-// DeleteHostApplyRule delete host apply rule by condition, bizID maybe 0
-func (p *hostApplyRule) DeleteHostApplyRule(kit *rest.Kit, bizID int64, ruleIDs ...int64) errors.CCErrorCoder {
+func (p *hostApplyRule) DeleteHostApplyRule(ctx core.ContextParams, bizID int64, ruleIDs ...int64) errors.CCErrorCoder {
 	if len(ruleIDs) == 0 {
-		return kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, "host_apply_rule_ids")
+		return ctx.Error.CCErrorf(common.CCErrCommParamsInvalid, "host_apply_rule_ids")
 	}
 	filter := map[string]interface{}{
-		common.BKOwnerIDField: kit.SupplierAccount,
+		common.BKOwnerIDField: ctx.SupplierAccount,
+		common.BKAppIDField:   bizID,
 		common.BKFieldID: map[string]interface{}{
 			common.BKDBIN: ruleIDs,
 		},
 	}
-	if bizID != 0 {
-		filter[common.BKAppIDField] = bizID
-	}
-	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Delete(kit.Ctx, filter); err != nil {
-		blog.Errorf("DeleteHostApplyRule failed, db remove failed, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-		return kit.CCError.CCError(common.CCErrCommDBDeleteFailed)
+	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Delete(ctx.Context, filter); err != nil {
+		blog.Errorf("DeleteHostApplyRule failed, db remove failed, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+		return ctx.Error.CCError(common.CCErrCommDBDeleteFailed)
 	}
 
 	return nil
 }
 
-func (p *hostApplyRule) GetHostApplyRule(kit *rest.Kit, bizID int64, ruleID int64) (metadata.HostApplyRule, errors.CCErrorCoder) {
+func (p *hostApplyRule) GetHostApplyRule(ctx core.ContextParams, bizID int64, ruleID int64) (metadata.HostApplyRule, errors.CCErrorCoder) {
 	rule := metadata.HostApplyRule{}
 	filter := map[string]interface{}{
-		common.BkSupplierAccount: kit.SupplierAccount,
+		common.BkSupplierAccount: ctx.SupplierAccount,
 		common.BKAppIDField:      bizID,
 		common.BKFieldID:         ruleID,
 	}
-	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(filter).One(kit.Ctx, &rule); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(filter).One(ctx.Context, &rule); err != nil {
 		if p.dbProxy.IsNotFoundError(err) {
-			blog.Errorf("GetHostApplyRule failed, db select failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-			return rule, kit.CCError.CCError(common.CCErrCommNotFound)
+			blog.Errorf("GetHostApplyRule failed, db select failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+			return rule, ctx.Error.CCError(common.CCErrCommNotFound)
 		}
-		blog.Errorf("GetHostApplyRule failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-		return rule, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.Errorf("GetHostApplyRule failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+		return rule, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	return rule, nil
 }
 
-func (p *hostApplyRule) GetHostApplyRuleByAttributeID(kit *rest.Kit, bizID, moduleID, attributeID int64) (metadata.HostApplyRule, errors.CCErrorCoder) {
+func (p *hostApplyRule) GetHostApplyRuleByAttributeID(ctx core.ContextParams, bizID, moduleID, attributeID int64) (metadata.HostApplyRule, errors.CCErrorCoder) {
 	rule := metadata.HostApplyRule{}
 	filter := map[string]interface{}{
-		common.BkSupplierAccount:  kit.SupplierAccount,
+		common.BkSupplierAccount:  ctx.SupplierAccount,
 		common.BKAppIDField:       bizID,
 		common.BKModuleIDField:    moduleID,
 		common.BKAttributeIDField: attributeID,
 	}
-	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(filter).One(kit.Ctx, &rule); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(filter).One(ctx.Context, &rule); err != nil {
 		if p.dbProxy.IsNotFoundError(err) {
-			blog.Errorf("GetHostApplyRuleByAttributeID failed, db select failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-			return rule, kit.CCError.CCError(common.CCErrCommNotFound)
+			blog.Errorf("GetHostApplyRuleByAttributeID failed, db select failed, not found, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+			return rule, ctx.Error.CCError(common.CCErrCommNotFound)
 		}
-		blog.Errorf("GetHostApplyRuleByAttributeID failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, kit.Rid)
-		return rule, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.Errorf("GetHostApplyRuleByAttributeID failed, db select failed, filter: %+v, err: %+v, rid: %s", filter, err, ctx.ReqID)
+		return rule, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	return rule, nil
 }
 
-// ListHostApplyRule by condition, bizID maybe 0
-func (p *hostApplyRule) ListHostApplyRule(kit *rest.Kit, bizID int64, option metadata.ListHostApplyRuleOption) (metadata.MultipleHostApplyRuleResult, errors.CCErrorCoder) {
+func (p *hostApplyRule) ListHostApplyRule(ctx core.ContextParams, bizID int64, option metadata.ListHostApplyRuleOption) (metadata.MultipleHostApplyRuleResult, errors.CCErrorCoder) {
 	result := metadata.MultipleHostApplyRuleResult{}
 	if option.Page.Limit > common.BKMaxPageSize && option.Page.Limit != common.BKNoLimit {
-		return result, kit.CCError.CCError(common.CCErrCommPageLimitIsExceeded)
+		return result, ctx.Error.CCError(common.CCErrCommPageLimitIsExceeded)
 	}
 
 	filter := map[string]interface{}{
-		common.BkSupplierAccount: kit.SupplierAccount,
-	}
-	if bizID != 0 {
-		filter[common.BKAppIDField] = bizID
+		common.BkSupplierAccount: ctx.SupplierAccount,
+		common.BKAppIDField:      bizID,
 	}
 	if option.ModuleIDs != nil {
 		filter[common.BKModuleIDField] = map[string]interface{}{
 			common.BKDBIN: option.ModuleIDs,
 		}
 	}
-	if len(option.AttributeIDs) != 0 {
-		filter[common.BKAttributeIDField] = map[string]interface{}{
-			common.BKDBIN: option.AttributeIDs,
-		}
-	}
 	query := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(filter)
-	total, err := query.Count(kit.Ctx)
+	total, err := query.Count(ctx.Context)
 	if err != nil {
-		blog.ErrorJSON("ListHostApplyRule failed, db count failed, filter: %s, err: %s, rid: %s", filter, err.Error(), kit.Rid)
-		return result, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		blog.ErrorJSON("ListHostApplyRule failed, db count failed, filter: %s, err: %s, rid: %s", filter, err.Error(), ctx.ReqID)
+		return result, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	result.Count = int64(total)
 
@@ -314,9 +285,9 @@ func (p *hostApplyRule) ListHostApplyRule(kit *rest.Kit, bizID int64, option met
 	}
 
 	rules := make([]metadata.HostApplyRule, 0)
-	if err := query.All(kit.Ctx, &rules); err != nil {
-		blog.ErrorJSON("ListHostApplyRule failed, db select failed, filter: %s, err: %s, rid: %s", filter, err.Error(), kit.Rid)
-		return result, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+	if err := query.All(ctx.Context, &rules); err != nil {
+		blog.ErrorJSON("ListHostApplyRule failed, db select failed, filter: %s, err: %s, rid: %s", filter, err.Error(), ctx.ReqID)
+		return result, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 
 	result.Info = rules
@@ -330,18 +301,18 @@ _ 支持通过模块名过滤
 _ 支持通过模块上设置的主机应用配置字段名过滤
 _ 支持通过模块上设置的主机应用配置字段值过滤，字段值需要支持数值型和枚举字段的过滤，枚举类型翻译成对应的name域再过滤
 */
-func (p *hostApplyRule) SearchRuleRelatedModules(kit *rest.Kit, bizID int64, option metadata.SearchRuleRelatedModulesOption) ([]metadata.Module, errors.CCErrorCoder) {
-	rid := kit.Rid
+func (p *hostApplyRule) SearchRuleRelatedModules(ctx core.ContextParams, bizID int64, option metadata.SearchRuleRelatedModulesOption) ([]metadata.Module, errors.CCErrorCoder) {
+	rid := ctx.ReqID
 
 	// list modules
 	moduleFilter := map[string]interface{}{
 		common.BKAppIDField:      bizID,
-		common.BkSupplierAccount: kit.SupplierAccount,
+		common.BkSupplierAccount: ctx.SupplierAccount,
 	}
 	modules := make([]metadata.Module, 0)
-	if err := p.dbProxy.Table(common.BKTableNameBaseModule).Find(moduleFilter).All(kit.Ctx, &modules); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameBaseModule).Find(moduleFilter).All(ctx.Context, &modules); err != nil {
 		blog.ErrorJSON("SearchRuleRelatedModules failed, find modules failed, filter: %s, err: %s, rid: %s", moduleFilter, err.Error(), rid)
-		return nil, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		return nil, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 	moduleMap := make(map[int64]metadata.Module)
 	for _, module := range modules {
@@ -351,12 +322,12 @@ func (p *hostApplyRule) SearchRuleRelatedModules(kit *rest.Kit, bizID int64, opt
 	// list rules
 	ruleFilter := map[string]interface{}{
 		common.BKAppIDField:      bizID,
-		common.BkSupplierAccount: kit.SupplierAccount,
+		common.BkSupplierAccount: ctx.SupplierAccount,
 	}
 	rules := make([]metadata.HostApplyRule, 0)
-	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(ruleFilter).All(kit.Ctx, &rules); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(ruleFilter).All(ctx.Context, &rules); err != nil {
 		blog.ErrorJSON("SearchRuleRelatedModules failed, find rules failed, filter: %s, err: %s, rid: %s", ruleFilter, err.Error(), rid)
-		return nil, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		return nil, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 
 	// list attributes
@@ -370,9 +341,9 @@ func (p *hostApplyRule) SearchRuleRelatedModules(kit *rest.Kit, bizID int64, opt
 		},
 	}
 	attributes := make([]metadata.Attribute, 0)
-	if err := p.dbProxy.Table(common.BKTableNameObjAttDes).Find(attributeFilter).All(kit.Ctx, &attributes); err != nil {
+	if err := p.dbProxy.Table(common.BKTableNameObjAttDes).Find(attributeFilter).All(ctx.Context, &attributes); err != nil {
 		blog.ErrorJSON("SearchRuleRelatedModules failed, find attributes failed, filter: %s, err: %s, rid: %s", attributeFilter, err.Error(), rid)
-		return nil, kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+		return nil, ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 	}
 
 	// attribute map
@@ -384,7 +355,7 @@ func (p *hostApplyRule) SearchRuleRelatedModules(kit *rest.Kit, bizID int64, opt
 	resultModuleMap := make(map[int64]bool)
 	resultModules := make([]metadata.Module, 0)
 	for _, module := range modules {
-		if matchModule(kit.Ctx, module, option) {
+		if matchModule(ctx, module, option) {
 			resultModuleMap[module.ModuleID] = true
 			resultModules = append(resultModules, module)
 			continue
@@ -393,16 +364,16 @@ func (p *hostApplyRule) SearchRuleRelatedModules(kit *rest.Kit, bizID int64, opt
 
 	for _, rule := range rules {
 		attribute, exist := attributeMap[rule.AttributeID]
-		if !exist {
+		if exist == false {
 			continue
 		}
-		if matchRule(kit.Ctx, rule, attribute, option) {
+		if matchRule(ctx, rule, attribute, option) {
 			module, exist := moduleMap[rule.ModuleID]
-			if !exist {
+			if exist == false {
 				continue
 			}
 			// avoid repeat
-			if _, exist := resultModuleMap[module.ModuleID]; exist {
+			if _, exist := resultModuleMap[module.ModuleID]; exist == true {
 				continue
 			}
 			resultModules = append(resultModules, module)
@@ -420,13 +391,11 @@ func matchModule(ctx context.Context, module metadata.Module, option metadata.Se
 			return false
 		}
 		strValue, ok := r.Value.(string)
-		if !ok {
+		if ok == false {
 			return false
 		}
-		if r.Operator == querybuilder.OperatorContains {
-			if util.CaseInsensitiveContains(module.ModuleName, strValue) {
-				return true
-			}
+		if util.CaseInsensitiveContains(module.ModuleName, strValue) {
+			return true
 		}
 		return false
 	})
@@ -445,24 +414,19 @@ func matchRule(ctx context.Context, rule metadata.HostApplyRule, attribute metad
 		if r.Field != strconv.FormatInt(attribute.ID, 10) {
 			return false
 		}
-		if r.Operator == querybuilder.OperatorExist {
-			return true
-		}
 		strValue, ok := r.Value.(string)
-		if !ok {
+		if ok == false {
 			return false
 		}
-		if r.Operator == querybuilder.OperatorContains {
-			if util.CaseInsensitiveContains(prettyValue, strValue) {
-				return true
-			}
+		if util.CaseInsensitiveContains(prettyValue, strValue) {
+			return true
 		}
 		return false
 	})
 }
 
-func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, option metadata.BatchCreateOrUpdateApplyRuleOption) (metadata.BatchCreateOrUpdateHostApplyRuleResult, errors.CCErrorCoder) {
-	rid := kit.Rid
+func (p *hostApplyRule) BatchUpdateHostApplyRule(ctx core.ContextParams, bizID int64, option metadata.BatchCreateOrUpdateApplyRuleOption) (metadata.BatchCreateOrUpdateHostApplyRuleResult, errors.CCErrorCoder) {
+	rid := ctx.ReqID
 	batchResult := metadata.BatchCreateOrUpdateHostApplyRuleResult{
 		Items: make([]metadata.CreateOrUpdateHostApplyRuleResult, 0),
 	}
@@ -473,14 +437,14 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, opt
 		}
 		ruleFilter := map[string]interface{}{
 			common.BKAppIDField:       bizID,
-			common.BkSupplierAccount:  kit.SupplierAccount,
+			common.BkSupplierAccount:  ctx.SupplierAccount,
 			common.BKAttributeIDField: item.AttributeID,
 			common.BKModuleIDField:    item.ModuleID,
 		}
-		count, err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(ruleFilter).Count(kit.Ctx)
+		count, err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Find(ruleFilter).Count(ctx.Context)
 		if err != nil {
 			blog.ErrorJSON("BatchUpdateHostApplyRule failed, find rule failed, filter: %s, err: %s, rid: %s", ruleFilter, err.Error(), rid)
-			ccErr := kit.CCError.CCError(common.CCErrCommDBSelectFailed)
+			ccErr := ctx.Error.CCError(common.CCErrCommDBSelectFailed)
 			itemResult.SetError(ccErr)
 			batchResult.Items = append(batchResult.Items, itemResult)
 			continue
@@ -491,11 +455,11 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, opt
 			updateData := map[string]interface{}{
 				common.BKPropertyValueField: item.PropertyValue,
 				common.LastTimeField:        now,
-				common.ModifierField:        kit.User,
+				common.ModifierField:        ctx.User,
 			}
-			if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Update(kit.Ctx, ruleFilter, updateData); err != nil {
+			if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Update(ctx.Context, ruleFilter, updateData); err != nil {
 				blog.ErrorJSON("BatchUpdateHostApplyRule failed, update rule failed, filter: %s, doc: %s, err: %s, rid: %s", ruleFilter, updateData, err.Error(), rid)
-				ccErr := kit.CCError.CCError(common.CCErrCommDBUpdateFailed)
+				ccErr := ctx.Error.CCError(common.CCErrCommDBUpdateFailed)
 				itemResult.SetError(ccErr)
 			}
 			batchResult.Items = append(batchResult.Items, itemResult)
@@ -503,10 +467,10 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, opt
 		}
 
 		// create new rule
-		newRuleID, err := p.dbProxy.NextSequence(kit.Ctx, common.BKTableNameHostApplyRule)
+		newRuleID, err := p.dbProxy.NextSequence(ctx.Context, common.BKTableNameHostApplyRule)
 		if err != nil {
 			blog.ErrorJSON("BatchUpdateHostApplyRule failed, generate id field failed, err: %s, rid: %s", err.Error(), rid)
-			ccErr := kit.CCError.CCError(common.CCErrCommGenerateRecordIDFailed)
+			ccErr := ctx.Error.CCError(common.CCErrCommGenerateRecordIDFailed)
 			itemResult.SetError(ccErr)
 			batchResult.Items = append(batchResult.Items, itemResult)
 			continue
@@ -517,15 +481,15 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, opt
 			ModuleID:        item.ModuleID,
 			AttributeID:     item.AttributeID,
 			PropertyValue:   item.PropertyValue,
-			Creator:         kit.User,
-			Modifier:        kit.User,
+			Creator:         ctx.User,
+			Modifier:        ctx.User,
 			CreateTime:      now,
 			LastTime:        now,
-			SupplierAccount: kit.SupplierAccount,
+			SupplierAccount: ctx.SupplierAccount,
 		}
-		if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Insert(kit.Ctx, rule); err != nil {
+		if err := p.dbProxy.Table(common.BKTableNameHostApplyRule).Insert(ctx.Context, rule); err != nil {
 			blog.ErrorJSON("BatchUpdateHostApplyRule failed, insert rule failed, doc: %s, err: %s, rid: %s", rule, err.Error(), rid)
-			ccErr := kit.CCError.CCError(common.CCErrCommDBInsertFailed)
+			ccErr := ctx.Error.CCError(common.CCErrCommDBInsertFailed)
 			itemResult.SetError(ccErr)
 			batchResult.Items = append(batchResult.Items, itemResult)
 			continue
@@ -534,7 +498,7 @@ func (p *hostApplyRule) BatchUpdateHostApplyRule(kit *rest.Kit, bizID int64, opt
 	}
 
 	for index, item := range option.Rules {
-		rule, ccErr := p.GetHostApplyRuleByAttributeID(kit, bizID, item.ModuleID, item.AttributeID)
+		rule, ccErr := p.GetHostApplyRuleByAttributeID(ctx, bizID, item.ModuleID, item.AttributeID)
 		if ccErr != nil {
 			blog.Errorf("GetHostApplyRuleByAttributeID failed, bizID: %d, moduleID: %d, attribute: %d, err: %s, rid: %s", bizID, item.ModuleID, item.AttributeID, ccErr.Error(), rid)
 			if err := batchResult.Items[index].GetError(); err == nil {

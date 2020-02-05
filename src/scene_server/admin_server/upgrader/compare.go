@@ -111,7 +111,7 @@ func ParseNgVersion(version string) (NgVersion, error) {
 
 	patch := fields[2]
 	match := PatchRegex.MatchString(patch)
-	if !match {
+	if match == false {
 		return ngVersion, invalidMessage
 	}
 	ngVersion.Patch = patch

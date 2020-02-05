@@ -122,6 +122,17 @@
             }
         },
         async created () {
+            this.$store.commit('setBreadcrumbs', [{
+                label: this.$t('服务拓扑'),
+                route: {
+                    name: MENU_BUSINESS_HOST_AND_SERVICE,
+                    query: {
+                        node: 'module-' + this.$route.params.moduleId
+                    }
+                }
+            }, {
+                label: this.$route.query.title
+            }])
             await this.getModuleInstance()
             this.initSelectedHost()
         },
@@ -264,8 +275,7 @@
                 this.$router.replace({
                     name: MENU_BUSINESS_HOST_AND_SERVICE,
                     query: {
-                        node: 'module-' + this.moduleId,
-                        tab: this.$route.query.tab
+                        node: 'module-' + this.moduleId
                     }
                 })
             }
@@ -275,7 +285,7 @@
 
 <style lang="scss" scoped>
     .create-layout {
-        padding: 15px 23px 0;
+        padding: 0 23px 0;
         font-size: 14px;
         color: #63656E;
     }

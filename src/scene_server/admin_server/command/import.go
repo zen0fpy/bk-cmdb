@@ -137,13 +137,12 @@ type importerBizTopo struct {
 	opt        *option
 
 	// first handle data. 检查json合法后的数据
-	procProcNameInfoMap  map[string]metadata.ProcessTemplate
+	procFuncNameInfoMap  map[string]metadata.ProcessTemplate
 	serviceTemplateMap   map[string]BKServiceTemplate
 	setNameInfoMap       map[string]map[string]interface{}
 	moduleSetNameInfoMap map[string]map[string]BKBizModule
 
-	procUUIDInfoMap map[string]metadata.ProcessTemplate
-	//  create topo info
+	// create topo info
 	newServiceTemplateMap map[string]int64
 	newSetTemplate        map[string]int64
 
@@ -159,7 +158,7 @@ func NewImporterBizTopo(importJSON BKTopo, db dal.DB, opt *option) *importerBizT
 		importJSON:                 importJSON,
 		db:                         db,
 		opt:                        opt,
-		procProcNameInfoMap:        make(map[string]metadata.ProcessTemplate, 0),
+		procFuncNameInfoMap:        make(map[string]metadata.ProcessTemplate, 0),
 		serviceTemplateMap:         make(map[string]BKServiceTemplate, 0),
 		setNameInfoMap:             make(map[string]map[string]interface{}, 0),
 		moduleSetNameInfoMap:       make(map[string]map[string]BKBizModule, 0),
@@ -167,7 +166,6 @@ func NewImporterBizTopo(importJSON BKTopo, db dal.DB, opt *option) *importerBizT
 		newSetTemplate:             make(map[string]int64, 0),
 		serviceCategoryL1CacheInfo: make(map[string]int64, 0),
 		serviceCategoryL2CacheInfo: make(map[int64]map[string]int64, 0),
-		procUUIDInfoMap:            make(map[string]metadata.ProcessTemplate, 0),
 	}
 }
 
@@ -200,30 +198,23 @@ func (ibt *importerBizTopo) FilterBKTopo(ctx context.Context, bizID, setParentID
 func (ibt *importerBizTopo) filterBKTopoProc(ctx context.Context, bizID int64) error {
 	for idx, proc := range ibt.importJSON.Proc {
 		funcName, ok := proc[common.BKFuncName].(string)
-		if !ok || funcName == "" {
-			return fmt.Errorf("process info index %d, field %s value not string", idx, common.BKFuncName)
-		}
-
-		procName, ok := proc[common.BKProcessNameField].(string)
-		if !ok || procName == "" {
-			return fmt.Errorf("process info index %d, field %s value not string", idx, common.BKProcessNameField)
-		}
-
-		if _, ok := ibt.procProcNameInfoMap[procName]; ok {
-			return fmt.Errorf("process info index %d,  %s  duplicate", idx, common.BKFuncName)
-		}
-		procUUID, ok := proc["uuid"].(string)
-		if ok {
-			delete(proc, "uuid")
-			if _, ok := ibt.procUUIDInfoMap[procUUID]; ok {
-				return fmt.Errorf("process info index %d,  %s  duplicate", idx, "uuid")
+		if !ok {
+			funcName, ok = proc[common.BKProcNameField].(string)
+			if !ok {
+				return fmt.Errorf("process info index %d, field %s value not string", idx, common.BKFuncName)
 			}
+			proc[common.BKFuncName] = funcName
+		} else {
+			proc[common.BKProcNameField] = funcName
+		}
+		if _, ok := ibt.procFuncNameInfoMap[funcName]; ok {
+			return fmt.Errorf("process info index %d,  %s  duplicate", idx, common.BKFuncName)
 		}
 
 		procTemp := metadata.ProcessTemplate{
 			// 	set value befor insert data to db
 			ID:          0,
-			ProcessName: procName,
+			ProcessName: funcName,
 			// set value  after create template,
 			ServiceTemplateID: 0,
 			BizID:             bizID,
@@ -239,12 +230,7 @@ func (ibt *importerBizTopo) filterBKTopoProc(ctx context.Context, bizID int64) e
 		if err != nil {
 			return fmt.Errorf("process index %d, name:%s, %s", idx, funcName, err.Error())
 		}
-
-		if procUUID != "" {
-			ibt.procUUIDInfoMap[procUUID] = procTemp
-		} else {
-			ibt.procProcNameInfoMap[procName] = procTemp
-		}
+		ibt.procFuncNameInfoMap[funcName] = procTemp
 	}
 	return nil
 }
@@ -253,13 +239,8 @@ func (ibt *importerBizTopo) filterBKTopoServiceTemplate(ctx context.Context) err
 
 	for idx, srvTemp := range ibt.importJSON.ServiceTemplateArr {
 		for _, procName := range srvTemp.BindProcess {
-			if _, ok := ibt.procProcNameInfoMap[procName]; !ok {
+			if _, ok := ibt.procFuncNameInfoMap[procName]; !ok {
 				return fmt.Errorf("service template  index %d, name:%s, bind process name[%s] not found", idx, srvTemp.Name, procName)
-			}
-		}
-		for _, procUUID := range srvTemp.BindProcessUUID {
-			if _, ok := ibt.procUUIDInfoMap[procUUID]; !ok {
-				return fmt.Errorf("service template  index %d, name:%s, bind process uuid[%s] not found", idx, srvTemp.Name, procUUID)
 			}
 		}
 		if len(srvTemp.ServiceCategoryName) == 0 {
@@ -393,18 +374,7 @@ func (ibt *importerBizTopo) initBKServiceCategory(ctx context.Context, bizID int
 			if err != nil {
 				return fmt.Errorf("init service template, get next id error. err:%s", err.Error())
 			}
-			procTemp := ibt.procProcNameInfoMap[procName]
-			procTemp.ServiceTemplateID = int64(nextSrvTempID)
-			procTemp.ID = int64(nextProcTempID)
-			procTempArr = append(procTempArr, procTemp)
-		}
-
-		for _, uuid := range srvTemp.BindProcessUUID {
-			nextProcTempID, err := ibt.db.NextSequence(ctx, common.BKTableNameProcessTemplate)
-			if err != nil {
-				return fmt.Errorf("init service template, get next id error. err:%s", err.Error())
-			}
-			procTemp := ibt.procUUIDInfoMap[uuid]
+			procTemp := ibt.procFuncNameInfoMap[procName]
 			procTemp.ServiceTemplateID = int64(nextSrvTempID)
 			procTemp.ID = int64(nextProcTempID)
 			procTempArr = append(procTempArr, procTemp)

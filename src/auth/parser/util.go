@@ -16,7 +16,6 @@ import (
 	"context"
 	"fmt"
 
-	"configcenter/src/auth/meta"
 	"configcenter/src/common"
 	"configcenter/src/common/errors"
 	"configcenter/src/common/mapstr"
@@ -179,31 +178,6 @@ func (ps *parseStream) getInstAssociation(cond mapstr.MapStr) (metadata.InstAsst
 	}
 
 	return asst.Data.Info[0], nil
-}
-
-func (ps *parseStream) getInstanceTypeByObject(objID string) (meta.ResourceType, error) {
-	switch objID {
-	case common.BKInnerObjIDPlat:
-		return meta.Plat, nil
-	case common.BKInnerObjIDHost:
-		return meta.HostInstance, nil
-	case common.BKInnerObjIDModule:
-		return meta.ModelModule, nil
-	case common.BKInnerObjIDSet:
-		return meta.ModelSet, nil
-	case common.BKInnerObjIDApp:
-		return meta.Business, nil
-	case common.BKInnerObjIDProc:
-		return meta.Process, nil
-	}
-	isMainline, err := ps.isMainlineModel(objID)
-	if err != nil {
-		return "", err
-	}
-	if isMainline {
-		return meta.MainlineInstance, nil
-	}
-	return meta.ModelInstance, nil
 }
 
 func (ps *parseStream) getOneClassification(cond mapstr.MapStr) (metadata.Classification, error) {
