@@ -437,15 +437,19 @@ func (r *Request) handleMockResult() *Result {
 
 // Returns if the given err is "connection reset by peer" error.
 func isConnectionReset(err error) bool {
+	// URL错误
 	if urlErr, ok := err.(*url.Error); ok {
 		err = urlErr.Err
 	}
+	// 操作错误
 	if opErr, ok := err.(*net.OpError); ok {
 		err = opErr.Err
 	}
+	// 系统调用错误，调用什么会出现
 	if osErr, ok := err.(*os.SyscallError); ok {
 		err = osErr.Err
 	}
+	// 连接错误
 	if errno, ok := err.(syscall.Errno); ok && errno == syscall.ECONNRESET {
 		return true
 	}
